@@ -29,6 +29,9 @@ export function Charts({ rows, onOpen }: { rows: ChartRow[]; onOpen?: OpenChart 
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    // "13.8" is a constant, "13" or "13+" a level; anything else is looked for in the title and artist
+    const constant = /^\d{1,2}\.\d$/.test(q) ? Number(q) : null;
+    const level = /^\d{1,2}\+?$/.test(q) ? q : null;
     const out = rows.filter((r) => {
       if (diff !== "all" && r.difficulty !== diff) return false;
       if (type !== "all" && r.type !== type) return false;
@@ -40,6 +43,8 @@ export function Charts({ rows, onOpen }: { rows: ChartRow[]; onOpen?: OpenChart 
           if (["SSS+", "SSS", "SS+", "SS", "S+", "S", "AAA", "AA", "A"].includes(r.rank)) return false;
         } else if (r.rank !== rank) return false;
       }
+      if (constant !== null) return Math.abs(r.constant - constant) < 0.05;
+      if (level !== null) return r.level === level;
       if (q && !r.title.toLowerCase().includes(q) && !r.artist.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -77,7 +82,7 @@ export function Charts({ rows, onOpen }: { rows: ChartRow[]; onOpen?: OpenChart 
   return (
     <>
       <div className="filters">
-        <input className="search" type="search" placeholder="title or artist" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input className="search" type="search" placeholder="title, artist, level 13+ or constant 13.8" value={query} onChange={(e) => setQuery(e.target.value)} />
         <select value={diff} onChange={(e) => setDiff(e.target.value)} aria-label="Difficulty">
           {DIFFS.map((d) => (
             <option key={d} value={d}>

@@ -74,6 +74,8 @@ async def constant_autocomplete(_interaction: discord.Interaction, current: str)
 
 async def level_autocomplete(_interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
     needle = (current or "").strip()
+    if re.fullmatch(r"\d{1,2}\.\d", needle):
+        return [app_commands.Choice(name=f"constant {needle}", value=needle)]
     levels = [lv for lv in LEVEL_PATTERN if lv.startswith(needle)] if needle else list(LEVEL_PATTERN[-10:])
     return [app_commands.Choice(name=lv, value=lv) for lv in levels[:25]]
 

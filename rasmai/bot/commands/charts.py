@@ -8,6 +8,7 @@ from rasmai.bot.state.cache import cache_get
 from rasmai.bot.builders.charts import (
     LEVEL_PATTERN, build_b50, build_dxscore, build_level, build_patterns, build_random, build_song, pattern_autocomplete, song_autocomplete,
 )
+from rasmai.bot.builders.charts.level import is_constant
 from rasmai.bot.core import bot, heavy_cooldown, light_cooldown, private_only
 from rasmai.bot.builders.areas import build_areas
 from rasmai.bot.builders.history import build_lastplay, build_progress, build_recent
@@ -61,7 +62,7 @@ async def chart(interaction: discord.Interaction, name: str, difficulty: Optiona
 @light_cooldown
 @app_commands.describe(
     pattern="A trait, in Japanese or English: streams, 乱打, hand swaps, slide-heavy, dense charts (leave empty to see them all)",
-    level="Level like 13 or 13+",
+    level="Level like 13 or 13+, or a constant like 13.8",
     difficulty="Only this difficulty",
     sort="Order of a level list",
 )
@@ -71,8 +72,8 @@ async def charts_command(interaction: discord.Interaction, pattern: Optional[str
                          difficulty: Optional[app_commands.Choice[str]] = None, sort: Optional[app_commands.Choice[str]] = None):
     owner = interaction.user.id
     chosen_level = (level or "").strip() or None
-    if chosen_level and chosen_level not in LEVEL_PATTERN:
-        await interaction.response.send_message(f"`{chosen_level[:12]}` is not a maimai level. Try one like `13` or `13+`.", ephemeral=True)
+    if chosen_level and chosen_level not in LEVEL_PATTERN and not is_constant(chosen_level):
+        await interaction.response.send_message(f"`{chosen_level[:12]}` is not a maimai level. Try one like `13` or `13+`, or a constant like `13.8`.", ephemeral=True)
         return
     wanted = difficulty.value if difficulty else None
     if pattern or not chosen_level:

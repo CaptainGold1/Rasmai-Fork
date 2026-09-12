@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional, Tuple
 import math
+import re
 import discord
 
 from rasmai.engine.analysis import DIFFICULTY_ORDER, rank_for
@@ -18,13 +19,24 @@ LEVEL_SORTS = {"weakest": "weakest first", "unplayed": "unplayed first", "rating
 LEVEL_PAGE = 12
 
 
+def is_constant(level: str) -> bool:
+    """Whether a level as typed is a constant like ``13.8`` rather than a level like ``13+``."""
+    return bool(re.fullmatch(r"\d{1,2}\.\d", level.strip()))
+
+
 def level_rows(cached: CachedAnalysis, level: str, sort: str) -> List[Dict[str, Any]]:
     a = cached.analyzer
     by_key = songs_by_key(cached)
     rows: List[Dict[str, Any]] = []
     seen = set()
+    constant = float(level) if is_constant(level) else None
+
+    def at_level(shown: Any, value: float) -> bool:
+        return abs(value - constant) < 0.05 if constant is not None else str(shown or "").strip() == level
+
     for key, song in by_key.items():
-        if str(song.level or "").strip() != level or str(song.difficulty_type).lower() == "utage":
+        ref = a.chart_index.get(key)
+        if not at_level(song.level, float(song.difficulty or (ref.constant if ref else 0))) or str(song.difficulty_type).lower() == "utage":
             continue
         ref = a.chart_index.get(key)
         seen.add(key)
@@ -38,7 +50,7 @@ def level_rows(cached: CachedAnalysis, level: str, sort: str) -> List[Dict[str, 
         })
     played_loose = set(songs_by_loose_key(cached))
     for ref in a.chart_index.values():
-        if str(ref.level).strip() != level or ref.difficulty not in DIFFICULTY_ORDER:
+        if not at_level(ref.level, ref.constant) or ref.difficulty not in DIFFICULTY_ORDER:
             continue
         if ref.key in seen or loose_key(ref.title, ref.chart_type, ref.difficulty) in played_loose:
             continue
@@ -76,10 +88,10 @@ async def build_level(cached: CachedAnalysis, owner_id: int, level: str, sort: s
             player.avatar_base64, cover_html_factory(a.jacket_path), len(rows), played, start=page * LEVEL_PAGE + 1, date_text=today(),
         ))
     files, avatar_url = message_files(player, shot, "rasmai-level.png")
-    embed = discord.Embed(title=f"Level {level} · {LEVEL_SORTS[sort]}", color=discord.Color.from_rgb(226, 69, 90))
+    embed = discord.Embed(title=f"{'Constant' if is_constant(level) else 'Level'} {level} · {LEVEL_SORTS[sort]}", color=discord.Color.from_rgb(226, 69, 90))
     embed.set_author(name=player.name, icon_url=avatar_url)
     if not rows:
-        embed.description = f"No charts at level {level} in the database. Levels look like `13` or `13+`."
+        embed.description = f"No charts at {level} in the database. Levels look like `13` or `13+`, constants like `13.8`."
         return embed, files, None
     embed.description = f"**{played}** of **{len(rows)}** charts played" + (f" · {len(rows) - played} never played" if len(rows) > played else "")
     lines: List[str] = []
