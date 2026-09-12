@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 import asyncio
 import csv
 import io
@@ -143,12 +143,16 @@ async def build_compare(cached: CachedAnalysis, other: discord.abc.User) -> Tupl
 
 # ---------------------------------------------------------------- /leaderboard
 
-async def build_leaderboard(guild: discord.Guild) -> Tuple[discord.Embed, List[discord.File]]:
+LEADERBOARD_PAGE = 20
+
+
+async def build_leaderboard(guild: discord.Guild, owner_id: Optional[int] = None, page: int = 0
+                            ) -> Tuple[discord.Embed, List[discord.File], Optional[discord.ui.View]]:
     embed = discord.Embed(title=f"Rating leaderboard · {guild.name}", color=discord.Color.from_rgb(240, 192, 74))
     accounts = accounts_with_setting("leaderboard")
     if not accounts:
         embed.description = "Nobody has opted in yet. `/settings leaderboard:True` puts you on the board."
-        return embed, []
+        return embed, [], None
     by_id = {acc["userId"]: acc for acc in accounts}
     ids = list(by_id)
     members: List[discord.Member] = []
@@ -168,18 +172,26 @@ async def build_leaderboard(guild: discord.Guild) -> Tuple[discord.Embed, List[d
         rows.append((rating, member.display_name, profile.get("name") or "", acc.get("region", "intl")))
     if not rows:
         embed.description = "Nobody in this server has opted in yet. `/settings leaderboard:True` puts you on the board."
-        return embed, []
+        return embed, [], None
     rows.sort(key=lambda r: -r[0])
+    pages = max(1, (len(rows) + LEADERBOARD_PAGE - 1) // LEADERBOARD_PAGE)
+    page = max(0, min(page, pages - 1))
+    start = page * LEADERBOARD_PAGE
     lines = []
-    for position, (rating, display, maimai_name, region) in enumerate(rows[:20], 1):
+    for position, (rating, display, maimai_name, region) in enumerate(rows[start:start + LEADERBOARD_PAGE], start + 1):
         tag = f"`{position:>2}`"
         who = f"**{display}**" + (f" · {maimai_name}" if maimai_name and maimai_name != display else "")
         lines.append(f"{tag} {who} — **{rating}**" + (f" ({region.upper()})" if region != "intl" else ""))
     embed.description = "\n".join(lines)
-    embed.set_footer(text=f"{len(rows)} opted-in players in this server · ratings from each player's last /analyze")
+    embed.set_footer(text=(f"page {page + 1}/{pages} · " if pages > 1 else "") + f"{len(rows)} opted-in players in this server · ratings from each player's last /analyze")
     shot = await try_render(leaderboard_image_html(guild.name, rows[:20], date_text=datetime.now().strftime("%d %B %Y")))
     files = [discord.File(io.BytesIO(shot), filename="rasmai-leaderboard.png")] if shot else []
-    return embed, files
+    from rasmai.bot.ui.views import PagedView
+
+    async def draw(wanted: int):
+        return await build_leaderboard(guild, owner_id, wanted)
+
+    return embed, files, PagedView(owner_id, page, pages, draw) if owner_id is not None and pages > 1 else None
 
 
 # ---------------------------------------------------------------- /settings

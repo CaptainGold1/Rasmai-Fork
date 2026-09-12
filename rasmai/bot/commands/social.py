@@ -40,12 +40,17 @@ async def leaderboard(interaction: discord.Interaction):
         return
     await interaction.response.defer()
     try:
-        embed, files = await build_leaderboard(interaction.guild)
+        embed, files, view = await build_leaderboard(interaction.guild, interaction.user.id)
     except Exception as error:
         logger.exception("leaderboard failed")
         await interaction.edit_original_response(content=f"Couldn't build the leaderboard.\n-# Details: {public_reason(error)}")
         return
-    await interaction.edit_original_response(embed=embed, attachments=files)
+    await interaction.edit_original_response(embed=embed, attachments=files, view=view)
+    if view is not None:
+        try:
+            view.message = await interaction.original_response()
+        except discord.HTTPException:
+            pass
 
 
 @bot.tree.command(name="settings", description="Your defaults and who can see your scores")

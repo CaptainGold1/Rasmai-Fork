@@ -121,13 +121,14 @@ class ResultsView(OwnerOnlyView):
             targets.callback = self._pick_challenge(targets)
             self.add_item(targets)
 
-        if mode == "plan":
-            prev_button = discord.ui.Button(label="Prev", row=1, style=discord.ButtonStyle.secondary)
+        if mode in ("plan", "new"):
+            prev_button = discord.ui.Button(label="Prev", row=1 if mode == "plan" else 4, style=discord.ButtonStyle.secondary)
             prev_button.callback = self._pager(-1)
             self.add_item(prev_button)
-            next_button = discord.ui.Button(label="Next", row=1, style=discord.ButtonStyle.secondary)
+            next_button = discord.ui.Button(label="Next", row=1 if mode == "plan" else 4, style=discord.ButtonStyle.secondary)
             next_button.callback = self._pager(1)
             self.add_item(next_button)
+        if mode == "plan":
             toggle = discord.ui.Button(
                 label="Grind targets" if stretch else "Stretch targets", row=1,
                 style=discord.ButtonStyle.success if stretch else discord.ButtonStyle.danger,
@@ -216,8 +217,8 @@ class ResultsView(OwnerOnlyView):
             await interaction.response.defer()
             cached = await self._cached(interaction)
             if cached:
-                await show_results(interaction, cached, "plan", target=self.target, stretch=self.stretch,
-                                   page=self.page + delta, difficulty=self.difficulty, min_level=self.min_level, level=self.level, credits=self.credits, focus=self.focus, output=self.output, challenge=self.challenge)
+                await show_results(interaction, cached, self.mode, target=self.target, stretch=self.stretch,
+                                   page=max(0, self.page + delta), difficulty=self.difficulty, min_level=self.min_level, level=self.level, credits=self.credits, focus=self.focus, output=self.output, challenge=self.challenge)
         return callback
 
     async def _toggle_stretch(self, interaction: discord.Interaction) -> None:
@@ -291,7 +292,7 @@ async def show_results(interaction: discord.Interaction, cached: CachedAnalysis,
     elif mode == "session":
         embed, files = await build_session(cached, credits, challenge, difficulty)
     elif mode == "new":
-        embed, files = await build_new(cached, difficulty, challenge, focus, level)
+        embed, files, page = await build_new(cached, difficulty, challenge, focus, level, page)
     elif mode == "profile":
         embed, files = await build_profile(cached)
     else:

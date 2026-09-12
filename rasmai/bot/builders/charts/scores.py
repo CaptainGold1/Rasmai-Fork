@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import math
 import discord
 
@@ -9,6 +9,9 @@ from rasmai.bot.state.snapshots import chart_key
 from rasmai.images.render import cover_html_factory
 from rasmai.images.pages import STAR_STEPS, best50_image_html, dxscore_image_html, star_text, stars_for
 from rasmai.bot.builders.charts.index import songs_by_key
+from rasmai.bot.ui.views import PagedView, from_cache
+
+PAGE = 8          # two-line entries per field: eight sit inside Discord's field cap
 
 
 def dxscore_rows(cached: CachedAnalysis) -> Tuple[Dict[int, int], List[Dict[str, Any]], float]:
@@ -44,11 +47,15 @@ def dxscore_rows(cached: CachedAnalysis) -> Tuple[Dict[int, int], List[Dict[str,
     return tiles, rows, average
 
 
-async def build_dxscore(cached: CachedAnalysis) -> Tuple[discord.Embed, List[discord.File], None]:
+async def build_dxscore(cached: CachedAnalysis, owner_id: Optional[int] = None, page: int = 0
+                        ) -> Tuple[discord.Embed, List[discord.File], Optional[discord.ui.View]]:
     from rasmai.bot.builders.results import _image
     a = cached.analyzer
     player = a.player
     tiles, rows, average = dxscore_rows(cached)
+    rows = rows[:PAGE * 6]          # the closest to their next star; the rest are not close
+    pages = max(1, math.ceil(len(rows) / PAGE))
+    page = max(0, min(page, pages - 1))
     shot = None
     if rows or any(tiles.values()):
         shot = await _image(cached, "dxscore", lambda: dxscore_image_html(
@@ -64,11 +71,13 @@ async def build_dxscore(cached: CachedAnalysis) -> Tuple[discord.Embed, List[dis
     embed.add_field(name="By star", value="\n".join(f"{star_text(s)} **{tiles[s]}**" for s in (5, 4, 3, 2, 1, 0)), inline=True)
     lines = [
         f"`{r['short']:>4}` {chart_link(r['title'], r['chart_type'], r['difficulty'], r.get('cover', ''))} {TIER_SHORT.get(r['difficulty'], '')} {level_text(r['level'], r.get('constant'))}\n-# {r['dx']:,}/{r['max_dx']:,} · {star_text(r['stars'])} → {star_text(r['stars'] + 1)}"
-        for r in rows[:8]
+        for r in rows[page * PAGE:(page + 1) * PAGE]
     ]
-    embed.add_field(name="Points short of the next star", value=_fit(lines) if lines else "Every chart is already five stars.", inline=True)
-    embed.set_footer(text="max DX score = notes × 3, from otoge-db · full list in the image")
-    return embed, files, None
+    embed.add_field(name="Points short of the next star" + (f" · {page * PAGE + 1}-{min((page + 1) * PAGE, len(rows))} of {len(rows)}" if len(rows) > PAGE else ""),
+                    value=_fit(lines) if lines else "Every chart is already five stars.", inline=True)
+    embed.set_footer(text="max DX score = notes × 3, from otoge-db" + (f" · page {page + 1}/{pages}" if pages > 1 else "") + " · closest thirty in the image, forty-eight in the text")
+    view = PagedView(owner_id, page, pages, from_cache(owner_id, lambda c, p: build_dxscore(c, owner_id, p))) if owner_id is not None and pages > 1 else None
+    return embed, files, view
 
 
 def best50_entries(cached: CachedAnalysis) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -95,12 +104,15 @@ def best50_entries(cached: CachedAnalysis) -> Tuple[List[Dict[str, Any]], List[D
     return entries(a.best50.new_pool), entries(a.best50.old_pool)
 
 
-async def build_b50(cached: CachedAnalysis) -> Tuple[discord.Embed, List[discord.File], None]:
+async def build_b50(cached: CachedAnalysis, owner_id: Optional[int] = None, page: int = 0
+                    ) -> Tuple[discord.Embed, List[discord.File], Optional[discord.ui.View]]:
     from rasmai.bot.builders.results import _image
     a = cached.analyzer
     player = a.player
     new_entries, old_entries = best50_entries(cached)
     b50 = a.best50
+    pages = max(1, math.ceil(max(len(new_entries), len(old_entries)) / PAGE))
+    page = max(0, min(page, pages - 1))
     shot = await _image(cached, "b50", lambda: best50_image_html(
         new_entries, old_entries, player.name, cached.start_rating, player.avatar_base64,
         cover_html_factory(a.jacket_path), b50.new_pool.total, b50.old_pool.total, date_text=today(),
@@ -113,13 +125,19 @@ async def build_b50(cached: CachedAnalysis) -> Tuple[discord.Embed, List[discord
                          f"-# cutoffs {b50.new_pool.cutoff} / {b50.old_pool.cutoff}"
                          + (f" · {b50.new_pool.headroom() + b50.old_pool.headroom()} slots open" if b50.new_pool.headroom() + b50.old_pool.headroom() else ""))
 
-    def lines(entries: List[Dict[str, Any]], limit: int) -> str:
+    start = page * PAGE
+
+    def lines(entries: List[Dict[str, Any]]) -> str:
         return _fit([
             f"`{i:>2}` {chart_link(e['title'], e['chart_type'], e['difficulty'], e.get('cover', ''))} {TIER_SHORT.get(e['difficulty'], '')} {level_text(e['level'], e.get('constant'))}\n-# {e['accuracy']:.4f} {e['rank']} · **{e['rating']}**"
-            for i, e in enumerate(entries[:limit], 1)
-        ]) if entries else "-"
+            for i, e in enumerate(entries[start:start + PAGE], start + 1)
+        ]) if len(entries) > start else "-# no more on this page"
 
-    embed.add_field(name="New version", value=lines(new_entries, 8), inline=True)
-    embed.add_field(name="Older versions", value=lines(old_entries, 8), inline=True)
-    embed.set_footer(text="all 50 in the image")
-    return embed, files, None
+    def span(entries: List[Dict[str, Any]]) -> str:
+        return f" · {start + 1}-{min(start + PAGE, len(entries))} of {len(entries)}" if len(entries) > PAGE and len(entries) > start else ""
+
+    embed.add_field(name="New version" + span(new_entries), value=lines(new_entries), inline=True)
+    embed.add_field(name="Older versions" + span(old_entries), value=lines(old_entries), inline=True)
+    embed.set_footer(text=(f"page {page + 1}/{pages} · " if pages > 1 else "") + "all 50 in the image")
+    view = PagedView(owner_id, page, pages, from_cache(owner_id, lambda c, p: build_b50(c, owner_id, p))) if owner_id is not None and pages > 1 else None
+    return embed, files, view

@@ -101,19 +101,19 @@ async def random_chart(interaction: discord.Interaction, level: Optional[str] = 
 @bot.tree.command(name="dxscore", description="Your DX score stars and the charts closest to the next one")
 @heavy_cooldown
 async def dxscore(interaction: discord.Interaction):
-    await run_simple_command(interaction, "Something went wrong reading your DX scores.", build_dxscore)
+    await run_simple_command(interaction, "Something went wrong reading your DX scores.", lambda cached: build_dxscore(cached, interaction.user.id))
 
 
 @bot.tree.command(name="b50", description="Your best 50: the charts that make up your rating")
 @heavy_cooldown
 async def b50(interaction: discord.Interaction):
-    await run_simple_command(interaction, "Something went wrong building your best-50.", build_b50)
+    await run_simple_command(interaction, "Something went wrong building your best-50.", lambda cached: build_b50(cached, interaction.user.id))
 
 
 @bot.tree.command(name="top", description="Your best 50: the charts that make up your rating (same as /b50)")
 @heavy_cooldown
 async def top(interaction: discord.Interaction):
-    await run_simple_command(interaction, "Something went wrong building your best-50.", build_b50)
+    await run_simple_command(interaction, "Something went wrong building your best-50.", lambda cached: build_b50(cached, interaction.user.id))
 
 
 @bot.tree.command(name="recent", description="Your last sessions: every play, new bests and what counted; or one play in full")

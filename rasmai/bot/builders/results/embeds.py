@@ -177,8 +177,12 @@ async def build_plan(cached: CachedAnalysis, target: Optional[int], stretch: boo
 FOCUS_LABELS = {"weak": "where you lose points", "strong": "where you shine"}
 
 
+NEW_PAGE = 12
+NEW_PAGES = 3
+
+
 async def build_new(cached: CachedAnalysis, difficulty: Optional[str], challenge: str = "balanced",
-                    focus: Optional[str] = None, level: Optional[str] = None) -> Tuple[discord.Embed, List[discord.File]]:
+                    focus: Optional[str] = None, level: Optional[str] = None, page: int = 0) -> Tuple[discord.Embed, List[discord.File], int]:
     a = cached.analyzer
     player = a.player
     profile = a.play_profile
@@ -187,7 +191,9 @@ async def build_new(cached: CachedAnalysis, difficulty: Optional[str], challenge
     level_span = analysis.level_range(level)
     level = str(level).strip() if level_span else None
     picks = analysis.recommend_unplayed(a.songs, profile, a.best50, a.chart_index, a.current_version,
-                                        difficulty=difficulty, limit=12, challenge=mode.key, focus=focus, level=level)
+                                        difficulty=difficulty, limit=NEW_PAGE * NEW_PAGES, challenge=mode.key, focus=focus, level=level)
+    pages = max(1, (len(picks) + NEW_PAGE - 1) // NEW_PAGE)
+    page = max(0, min(page, pages - 1))
     label = TIER_NAMES.get(difficulty, "EXPERT AND UP") if difficulty else "EXPERT AND UP"
     if level:
         label += f" · LV {level}"
@@ -197,7 +203,7 @@ async def build_new(cached: CachedAnalysis, difficulty: Optional[str], challenge
     shot = None
     if picks:
         shot = await _image(cached, f"new:{difficulty}:{level or ''}:{challenge}:{focus or ''}", lambda: posters.new_poster_html(
-            picks, player.name, cached.start_rating, player.avatar_base64,
+            picks[:NEW_PAGE], player.name, cached.start_rating, player.avatar_base64,
             cover_html_factory(a.jacket_path), label, lower, upper, date_text=_today(),
         ))
     files, avatar_url = message_files(player, shot, "rasmai-new.png")
@@ -225,7 +231,7 @@ async def build_new(cached: CachedAnalysis, difficulty: Optional[str], challenge
         embed.add_field(name="Nothing in range", value="Every chart at this difficulty inside your range has been played already, or would land below AAA on a first pass. Try another difficulty, or ask for a level.", inline=False)
     else:
         lines: List[str] = []
-        for index, pick in enumerate(picks, 1):
+        for index, pick in enumerate(picks[page * NEW_PAGE:(page + 1) * NEW_PAGE], page * NEW_PAGE + 1):
             short = TIER_SHORT.get(pick.difficulty, pick.difficulty[:3].upper())
             worth = f"**+{pick.rating_gain}**" if pick.rating_gain > 0 else "banks"
             lines.append(
@@ -235,8 +241,8 @@ async def build_new(cached: CachedAnalysis, difficulty: Optional[str], challenge
         embed.add_field(name="Start with these", value=_fit(lines[:6]), inline=True)
         if len(lines) > 6:
             embed.add_field(name="Then", value=_fit(lines[6:12]), inline=True)
-    embed.set_footer(text=f"{len(a.songs)} charts known · first-pass estimates · jackets in the image")
-    return embed, files
+    embed.set_footer(text=(f"page {page + 1}/{pages} · " if pages > 1 else "") + f"{len(a.songs)} charts known · first-pass estimates · the first twelve have jackets in the image")
+    return embed, files, page
 
 
 async def build_profile(cached: CachedAnalysis) -> Tuple[discord.Embed, List[discord.File]]:

@@ -1,9 +1,12 @@
-from typing import Optional
+from typing import Any, Awaitable, Callable, Optional
+import logging
 import discord
 
-from rasmai.bot.state.cache import forget_analysis
+from rasmai.bot.state.cache import cache_get, forget_analysis
 from rasmai.storage.db import delete_connected_account, get_connected_account
-from rasmai.security import LOGIN_CODE_TTL
+from rasmai.security import LOGIN_CODE_TTL, public_reason
+
+logger = logging.getLogger(__name__)
 
 
 class OwnerOnlyView(discord.ui.View):
@@ -31,6 +34,61 @@ class OwnerOnlyView(discord.ui.View):
             )
             return False
         return True
+
+
+class Expired(Exception):
+    """The analysis behind a message is no longer held; the command has to be run again."""
+
+
+class PagedView(OwnerOnlyView):
+    """Prev and Next under a list that spans pages; `draw(page)` builds the page asked for.
+
+    The buttons only appear when there is more than one page, so a subclass can add its
+    own components either way."""
+
+    def __init__(self, owner_id: int, page: int, pages: int, draw: Callable[[int], Awaitable[Any]], timeout: float = 600):
+        super().__init__(owner_id, timeout=timeout)
+        self.page, self.pages, self.draw = page, pages, draw
+        if pages > 1:
+            prev_button = discord.ui.Button(label="Prev", row=0, style=discord.ButtonStyle.secondary, disabled=page <= 0)
+            prev_button.callback = self._mover(-1)
+            self.add_item(prev_button)
+            self.add_item(discord.ui.Button(label=f"page {page + 1} of {pages}", row=0, style=discord.ButtonStyle.secondary, disabled=True))
+            next_button = discord.ui.Button(label="Next", row=0, style=discord.ButtonStyle.secondary, disabled=page >= pages - 1)
+            next_button.callback = self._mover(1)
+            self.add_item(next_button)
+
+    def _mover(self, delta: int):
+        async def callback(interaction: discord.Interaction) -> None:
+            await interaction.response.defer()
+            try:
+                embed, files, view = await self.draw(max(0, min(self.page + delta, self.pages - 1)))
+            except Expired:
+                await interaction.followup.send("Those results have expired - run the command again.", ephemeral=True)
+                return
+            except Exception as error:
+                logger.exception("page turn failed")
+                await interaction.followup.send(f"Couldn't turn the page: {public_reason(error)}", ephemeral=True)
+                return
+            await interaction.edit_original_response(embed=embed, attachments=files, view=view)
+            if view is not None:
+                view.message = self.message
+        return callback
+
+
+def from_cache(owner_id: int, build: Callable[..., Awaitable[Any]]) -> Callable[[int], Awaitable[Any]]:
+    """A page drawer over the owner's analysis, fetched again at every turn: ``build(cached, page)``.
+
+    :param owner_id: The Discord user the components answer to.
+    :type owner_id: int
+    :param build: Builds the reply for one page.
+    """
+    async def draw(page: int):
+        cached = cache_get(str(owner_id))
+        if cached is None:
+            raise Expired()
+        return await build(cached, page)
+    return draw
 
 
 class LoginView(OwnerOnlyView):
