@@ -10,8 +10,8 @@ const SORTS: { key: SortKey; desc: boolean; label: string }[] = [
   { key: "rating", desc: true, label: "rating, high first" },
   { key: "constant", desc: true, label: "constant, high first" },
   { key: "constant", desc: false, label: "constant, low first" },
-  { key: "accuracy", desc: true, label: "achievement, high first" },
-  { key: "accuracy", desc: false, label: "achievement, low first" },
+  { key: "accuracy", desc: false, label: "weakest first" },
+  { key: "accuracy", desc: true, label: "strongest first" },
   { key: "dx", desc: true, label: "DX score, high first" },
   { key: "plays", desc: true, label: "most played" },
   { key: "title", desc: false, label: "title, A to Z" },
@@ -109,7 +109,6 @@ export function Charts({ rows, onOpen }: { rows: ChartRow[]; onOpen?: OpenChart 
           <option value="old">older versions</option>
         </select>
         <select
-          className="narrow-only"
           value={`${sort}|${desc ? "d" : "a"}`}
           onChange={(e) => {
             const [key, dir] = e.target.value.split("|");

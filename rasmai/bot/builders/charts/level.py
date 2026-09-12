@@ -13,7 +13,7 @@ from rasmai.bot.builders.charts.index import loose_key, songs_by_key, songs_by_l
 from rasmai.bot.builders.charts.ladder import entry_note
 
 
-LEVEL_SORTS = {"weakest": "weakest first", "unplayed": "unplayed first", "rating": "highest rating first"}
+LEVEL_SORTS = {"weakest": "weakest first", "strongest": "strongest first", "unplayed": "unplayed first", "rating": "highest rating first"}
 
 
 LEVEL_PAGE = 12
@@ -65,6 +65,8 @@ def level_rows(cached: CachedAnalysis, level: str, sort: str) -> List[Dict[str, 
         rows.sort(key=lambda r: (not r["unplayed"], r["accuracy"], -r["constant"]))
     elif sort == "rating":
         rows.sort(key=lambda r: (r["unplayed"], -r["rating"], -r["accuracy"]))
+    elif sort == "strongest":
+        rows.sort(key=lambda r: (r["unplayed"], -r["accuracy"], -r["constant"]))
     else:
         rows.sort(key=lambda r: (r["unplayed"], r["accuracy"], -r["constant"]))
     return rows
