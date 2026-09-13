@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any, Tuple
+import json
 
 from rasmai.security import decrypt_token
 from rasmai.storage.db.connection import _load_json_column, get_database_connection
@@ -81,7 +82,7 @@ def load_play_history(user_id: str, limit: Optional[int] = None) -> List[Dict[st
     connection = get_database_connection()
     try:
         rows = connection.execute(
-            "SELECT chart_key, played_at, achievement, dx_score, fc, fs, source, max_dx, track "
+            "SELECT chart_key, played_at, achievement, dx_score, fc, fs, source, max_dx, track, judgement "
             "FROM chart_scores WHERE user_id = ? ORDER BY played_at",
             (user_id,),
         ).fetchall()
@@ -93,10 +94,15 @@ def load_play_history(user_id: str, limit: Optional[int] = None) -> List[Dict[st
         key = str(row["chart_key"])
         achievement = float(row["achievement"])
         if row["source"] == "play":
+            try:
+                judgement = json.loads(row["judgement"]) if row["judgement"] else None
+            except (TypeError, ValueError):
+                judgement = None
             plays.append({
                 "key": key, "played_at": str(row["played_at"]), "achievement": achievement,
                 "dx_score": int(row["dx_score"] or 0), "max_dx": int(row["max_dx"] or 0), "track": int(row["track"] or 0),
                 "fc": str(row["fc"] or ""), "fs": str(row["fs"] or ""), "best_before": best_so_far.get(key, 0.0),
+                "judgement": judgement,
             })
         best_so_far[key] = max(best_so_far.get(key, 0.0), achievement)
     plays.reverse()

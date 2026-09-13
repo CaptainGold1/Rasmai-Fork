@@ -13,6 +13,23 @@ logger = logging.getLogger(__name__)
 class PlaylogPages:
     """Reading the recent plays, the playlog detail pages and the play counts."""
 
+    def enrich_recent_play_judgements(self, recent: List[Dict[str, Any]], region: str = "intl") -> None:
+        """Attach compact judgement data to imported recent plays when available."""
+        for record in recent:
+            idx = str(record.get("idx") or "")
+            if not idx:
+                continue
+            try:
+                detail = self.fetch_playlog_detail(idx, region)
+            except Exception as error:
+                logger.info("Playlog detail unavailable for %s: %s", idx, error)
+                continue
+            record["judgement"] = {
+                "fast": int(detail.get("fast") or 0),
+                "late": int(detail.get("late") or 0),
+                "notes": detail.get("notes") or {},
+            }
+
     def play_count_targets(self, limit: int = PLAY_COUNT_FETCH_LIMIT, recommendations=None, plan=None) -> List[Tuple[str, str, str]]:
         """Charts worth a detail-page fetch, in poster order, minus known ones.
 
@@ -246,4 +263,6 @@ class PlaylogPages:
             raise ValueError("Official session was not preserved after login")
         base_url = get_maimai_base_url(region)
         recent_html = self._fetch_official_html(session, f"{base_url}/maimai-mobile/record/", f"{base_url}/maimai-mobile/")
-        return self._parse_official_recent_songs(recent_html, region)
+        recent = self._parse_official_recent_songs(recent_html, region)
+        self.enrich_recent_play_judgements(recent, region)
+        return recent

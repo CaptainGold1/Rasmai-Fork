@@ -98,6 +98,7 @@ class MaimaiRatingAnalyzer(ScorePages, AreaPages, PlaylogPages, ProfilePages):
         tell("recent", 0, 1)
         recent_html = self._fetch_official_html(session, f"{base_url}/maimai-mobile/record/", referer)
         recent_songs_data = self._parse_official_recent_songs(recent_html, region)
+        self.enrich_recent_play_judgements(recent_songs_data, region)
         tell("recent", 1, 1, detail=f"{len(recent_songs_data)} recent plays")
         tell("extras", 0, 1)
 

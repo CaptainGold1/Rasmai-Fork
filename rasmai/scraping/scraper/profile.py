@@ -161,6 +161,7 @@ class ProfilePages:
         recent_html = self._fetch_official_html(session, f"{base_url}/maimai-mobile/record/", f"{base_url}/maimai-mobile/")
         self.player = player
         self.recent_songs = self._parse_official_recent_songs(recent_html, region)
+        self.enrich_recent_play_judgements(self.recent_songs, region)
         if with_areas:
             try:
                 self.fetch_official_areas(region)

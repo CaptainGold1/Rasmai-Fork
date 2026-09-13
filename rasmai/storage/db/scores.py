@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple, Any
+import json
 
 from rasmai.config import PLAY_COUNT_TTL
 from rasmai.storage.db.connection import get_database_connection
+from rasmai.util import _json_safe
 
 
 def load_play_counts(
@@ -69,7 +71,7 @@ def save_play_counts(user_id: str, counts: Dict[Tuple[str, str, str], int]) -> N
 
 
 def record_chart_scores(user_id: str, rows: List[Tuple[Any, ...]]) -> int:
-    """Append (chart_key, played_at, achievement, dx_score, fc, fs, source[, max_dx, track]) rows; repeats are ignored.
+    """Append score rows, retaining imported judgement data when available.
 
     Rows are kept for as long as the account is linked: they are the player's own score
     history, and everything that draws a graph or checks the model reads from here.
@@ -86,10 +88,13 @@ def record_chart_scores(user_id: str, rows: List[Tuple[Any, ...]]) -> int:
     try:
         with connection:
             cursor = connection.executemany(
-                "INSERT OR IGNORE INTO chart_scores (user_id, chart_key, played_at, achievement, dx_score, fc, fs, source, max_dx, track) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                "INSERT INTO chart_scores (user_id, chart_key, played_at, achievement, dx_score, fc, fs, source, max_dx, track, judgement) "
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                                "ON CONFLICT(user_id, chart_key, played_at) DO UPDATE SET judgement = "
+                                "CASE WHEN excluded.judgement <> '' THEN excluded.judgement ELSE chart_scores.judgement END",
                 [(user_id, row[0], row[1], float(row[2]), int(row[3]), row[4] or "", row[5] or "", row[6],
-                  int(row[7]) if len(row) > 7 else 0, int(row[8]) if len(row) > 8 else 0)
+                                    int(row[7]) if len(row) > 7 else 0, int(row[8]) if len(row) > 8 else 0,
+                                    json.dumps(_json_safe(row[9]), ensure_ascii=False) if len(row) > 9 and row[9] else "")
                  for row in rows],
             )
             return cursor.rowcount if cursor.rowcount is not None else 0
@@ -127,13 +132,21 @@ def load_chart_scores(user_id: str, chart_keys: List[str]) -> List[Dict[str, Any
     try:
         marks = ",".join("?" for _ in chart_keys)
         rows = connection.execute(
-            f"SELECT played_at, achievement, dx_score, fc, fs, source FROM chart_scores "
+            f"SELECT played_at, achievement, dx_score, fc, fs, source, judgement FROM chart_scores "
             f"WHERE user_id = ? AND chart_key IN ({marks}) ORDER BY played_at",
             (user_id, *chart_keys),
         ).fetchall()
     finally:
         connection.close()
-    return [dict(row) for row in rows]
+    out = []
+    for row in rows:
+        item = dict(row)
+        try:
+            item["judgement"] = json.loads(item["judgement"]) if item.get("judgement") else None
+        except (TypeError, ValueError):
+            item["judgement"] = None
+        out.append(item)
+    return out
 
 
 def load_recorded_plays(user_id: str) -> List[Dict[str, Any]]:

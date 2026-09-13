@@ -175,7 +175,8 @@ def get_database_connection() -> sqlite3.Connection:
                     )
                     """
                 )
-                for column in ("max_dx INTEGER NOT NULL DEFAULT 0", "track INTEGER NOT NULL DEFAULT 0"):
+                for column in ("max_dx INTEGER NOT NULL DEFAULT 0", "track INTEGER NOT NULL DEFAULT 0",
+                               "judgement TEXT NOT NULL DEFAULT ''"):
                     try:
                         setup.execute(f"ALTER TABLE chart_scores ADD COLUMN {column}")
                     except sqlite3.OperationalError:
