@@ -81,6 +81,7 @@ def overview_payload(user: Dict[str, Any], account: Optional[Dict[str, Any]]) ->
         ],
         "settings": get_prefs(user["id"]),
         "refresh": refresh_jobs.status(user["id"]),
+        "sessionExpired": account.get("sessionExpired") or "",
     })
     payload["forecast"] = rating_forecast(history)
     cached = analysis_for_user(user["id"], account)

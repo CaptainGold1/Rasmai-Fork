@@ -40,6 +40,10 @@ def get_database_connection() -> sqlite3.Connection:
                     )
                     """
                 )
+                try:
+                    setup.execute("ALTER TABLE connected_accounts ADD COLUMN session_expired TEXT NOT NULL DEFAULT ''")
+                except sqlite3.OperationalError:
+                    pass      # already there
                 setup.execute(
                     """
                     CREATE TABLE IF NOT EXISTS login_codes (

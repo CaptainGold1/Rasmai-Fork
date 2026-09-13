@@ -13,7 +13,7 @@ from rasmai.bot.state.snapshots import analyzer_from_snapshot, collect_judgement
 from rasmai.scraping.scraper import SessionRejected, MaimaiRatingAnalyzer
 from rasmai.config import DEBUG_MODE, MAIMAI_BASE_URLS, SNAPSHOT_MAX_AGE
 from rasmai.security import public_reason
-from rasmai.storage.db import get_connected_account, record_area_progress
+from rasmai.storage.db import get_connected_account, mark_session_expired, record_area_progress
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +78,9 @@ async def _stale_analysis(interaction: discord.Interaction, user_id: str, accoun
     :type error: Exception
     :rtype: Optional[CachedAnalysis]
     """
+    if isinstance(error, SessionRejected):
+        # both command paths land here, so this is where the site learns the sign-in has to be redone
+        await asyncio.to_thread(mark_session_expired, user_id)
     cached = await _analysis_from_store(user_id, account)
     if cached is None:
         return None

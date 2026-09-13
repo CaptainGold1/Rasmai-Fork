@@ -14,8 +14,8 @@ from rasmai.config import MAIMAI_BASE_URLS
 from rasmai.scraping.scraper import MaimaiRatingAnalyzer, SessionRejected
 from rasmai.security import public_reason
 from rasmai.storage.db import (
-    best_recorded_scores, notified_rating, quiet_read_done, quiet_read_status, quiet_reads_due, record_chart_scores,
-    set_notified_rating,
+    best_recorded_scores, mark_session_expired, notified_rating, quiet_read_done, quiet_read_status, quiet_reads_due,
+    record_chart_scores, set_notified_rating,
 )
 
 logger = logging.getLogger(__name__)
@@ -111,6 +111,7 @@ class HistoryWatch:
             except SessionRejected as error:
                 previous = quiet_read_status(user_id)
                 quiet_read_done(user_id, 0, public_reason(error))
+                mark_session_expired(user_id)
                 logger.info("history: %s needs /login again (%s)", user_id, public_reason(error))
                 # the first failure after a run of good reads gets a card; a link that stays dead is not nagged about daily
                 if not (previous or {}).get("error"):

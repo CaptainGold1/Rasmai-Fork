@@ -30,6 +30,7 @@ export type Overview = {
   history?: HistoryPoint[];
   settings?: Record<string, string | boolean>;
   refresh?: RefreshStatus;
+  sessionExpired?: string;
   playHistory?: number;
   judgements?: JudgementProfileData | null;
   sinceLast?: { since: string; ratingDelta: number; plays: number; newBests: number } | null;

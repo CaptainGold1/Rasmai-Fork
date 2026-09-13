@@ -239,6 +239,7 @@ export function Dash() {
   const s = me.snapshot!;
   return (
     <Frame user={me.user} onSignOut={signOut}>
+      {me.sessionExpired ? <SessionExpired since={me.sessionExpired} /> : null}
       <section className="ident">
         <div className="ident-who">
           <div className="label">
@@ -336,5 +337,20 @@ export function Dash() {
         )}
       </main>
     </Frame>
+  );
+}
+
+/** Shown above everything when maimai DX NET has refused the saved sign-in: reads stop until it is linked again. */
+function SessionExpired({ since }: { since: string }) {
+  const when = new Date(since);
+  const on = Number.isNaN(when.getTime())
+    ? ""
+    : ` on ${when.toLocaleDateString(undefined, { day: "numeric", month: "short" })}`;
+  return (
+    <aside className="expired" role="status">
+      <b>Your maimai session has expired.</b> maimai DX NET stopped accepting the saved sign-in{on}, so your scores are no
+      longer being read. Everything below is your last successful read. Run <code>/login</code> in Discord to link again and
+      the reads carry on from where they stopped.
+    </aside>
   );
 }

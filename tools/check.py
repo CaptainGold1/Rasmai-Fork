@@ -387,6 +387,33 @@ def _dropped():
     return problems
 
 
+@check("an expired maimai session is flagged until the player links again")
+def _expired():
+    import tempfile, pathlib
+    from rasmai.storage.db import connection as store
+    was, store.DATABASE_PATH = store.DATABASE_PATH, pathlib.Path(tempfile.mkdtemp()) / "t.sqlite3"
+    store._database_ready = False
+    try:
+        from rasmai.storage.db import get_connected_account, mark_session_expired, upsert_connected_account
+        problems = []
+        upsert_connected_account("u1", "intl", "cookie://abc")
+        if get_connected_account("u1")["sessionExpired"]:
+            problems.append("a freshly linked account is already flagged")
+        mark_session_expired("u1", "2026-09-13T10:00:00")
+        if get_connected_account("u1")["sessionExpired"] != "2026-09-13T10:00:00":
+            problems.append("the refusal was not recorded")
+        mark_session_expired("u1", "2026-09-14T10:00:00")
+        if get_connected_account("u1")["sessionExpired"] != "2026-09-13T10:00:00":
+            problems.append("a later refusal moved the date; it should keep the first one")
+        upsert_connected_account("u1", "intl", "cookie://new")
+        if get_connected_account("u1")["sessionExpired"]:
+            problems.append("linking again did not clear the flag, so the banner would never go away")
+        return problems
+    finally:
+        store.DATABASE_PATH = was
+        store._database_ready = False
+
+
 @check("a play-count refresh drops every poster built for that level and nothing else")
 def _forget():
     from rasmai.bot.state.cache import CachedAnalysis

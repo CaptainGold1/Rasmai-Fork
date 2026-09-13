@@ -141,7 +141,8 @@ def upsert_connected_account(user_id: str, region: str, token: str, official_pro
                     token            = excluded.token,
                     official_profile = COALESCE(excluded.official_profile, connected_accounts.official_profile),
                     latest_snapshot  = COALESCE(excluded.latest_snapshot, connected_accounts.latest_snapshot),
-                    updated_at       = excluded.updated_at
+                    updated_at       = excluded.updated_at,
+                    session_expired  = ''
                 """,
                 (
                     user_id,
@@ -176,7 +177,29 @@ def get_connected_account(user_id: str) -> Optional[Dict[str, Any]]:
         "latestSnapshot": _load_json_column(row["latest_snapshot"]),
         "createdAt": row["created_at"],
         "updatedAt": row["updated_at"],
+        "sessionExpired": row["session_expired"] or "",
     }
+
+
+def mark_session_expired(user_id: str, when: str = "") -> None:
+    """Record that maimai DX NET refused the saved sign-in, so the site can say so before the next read.
+
+    The next successful ``/login`` clears it, because the upsert writes the column back to empty.
+
+    :param user_id: The Discord user id.
+    :type user_id: str
+    :param when: When it was refused, ISO 8601; now by default.
+    :type when: str
+    """
+    connection = get_database_connection()
+    try:
+        with connection:
+            connection.execute(
+                "UPDATE connected_accounts SET session_expired = ? WHERE user_id = ? AND session_expired = ''",
+                (when or datetime.now().isoformat(timespec="seconds"), user_id),
+            )
+    finally:
+        connection.close()
 
 
 def delete_connected_account(user_id: str) -> bool:

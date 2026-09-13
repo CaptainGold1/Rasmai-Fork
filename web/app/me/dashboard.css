@@ -542,3 +542,7 @@ html[data-standalone] .dash .ident { margin-top: 16px; }
 /* a chart the database has not learned yet */
 .tag-est { display: inline-block; margin: 3px 0 0 6px; padding: 1px 7px; border: 1px dashed var(--gold-edge); border-radius: 999px; color: var(--gold-edge); font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; vertical-align: middle; }
 :root[data-theme="dark"] .tag-est { color: var(--gold); border-color: var(--gold); }
+.expired { margin-top: 26px; padding: 14px 16px; border: 2px solid var(--pink-edge); border-left-width: 6px; border-radius: 4px; background: color-mix(in srgb, var(--pink) 8%, transparent); font-size: 14.5px; line-height: 1.55; }
+.expired b { color: var(--pink-edge); }
+:root[data-theme="dark"] .expired b { color: var(--pink); }
+.expired code { font-family: var(--font-mono), monospace; font-size: 13px; }
