@@ -12,8 +12,9 @@ from rasmai.bot.ui.formatting import TIER_NAMES, message_files, stamp, today
 from rasmai.web.links import chart_url
 from rasmai.bot.ui import emoji
 from rasmai.bot.ui.views import OwnerOnlyView
+from rasmai.scraping.scraper import SessionRejected
 from rasmai.security import public_reason
-from rasmai.storage.db import get_connected_account
+from rasmai.storage.db import get_connected_account, mark_session_expired
 from rasmai.bot.core import try_render
 from rasmai.images.cards import play_card_html
 from rasmai.images.render import cover_html_factory
@@ -55,7 +56,13 @@ def play_detail(cached: CachedAnalysis, idx: str) -> Dict[str, Any]:
             account = get_connected_account(cached.user_id)
             if not account or not account.get("token"):
                 raise ValueError("Not signed in")
-            a.fetch_official_player_profile(str(account["token"]), cached.region)
+            try:
+                a.fetch_official_player_profile(str(account["token"]), cached.region)
+            except SessionRejected:
+                # for someone who only uses the website this is the first live read of the visit,
+                # so it is where a dead sign-in surfaces; flagging it here covers /lastplay too
+                mark_session_expired(cached.user_id)
+                raise
         detail = a.fetch_playlog_detail(idx, cached.region)
         cached.extras[slot] = detail
         record = next((r for r in a.recent_songs or [] if str(r.get("idx", "")) == idx), None)
