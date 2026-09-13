@@ -1,9 +1,3 @@
-"""The model: rating maths, the chart database, the play profile, and what to play next.
-
-Split into modules by subject. Everything defined across them is re-exported here, so
-``from rasmai.engine.analysis import build_plan`` reads the same as it did when this was
-one file.
-"""
 from rasmai.engine.analysis.rating import (  # noqa: F401
     ACHIEVEMENT_CAP,
     BEST_HEADROOM,

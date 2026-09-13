@@ -70,7 +70,9 @@ def setup(args) -> None:
         venv.EnvBuilder(with_pip=True).create(VENV)
     print("Installing Python dependencies")
     _run([_bin("python"), "-m", "pip", "install", "--quiet", "--upgrade", "pip"])
-    _run([_bin("python"), "-m", "pip", "install", "--quiet", "-r", "requirements.txt"])
+    # pyflakes is what the sweep uses to catch undefined names; it stays out of requirements.txt
+    # so the production image does not carry a linter
+    _run([_bin("python"), "-m", "pip", "install", "--quiet", "-r", "requirements.txt", "pyflakes"])
     if not args.no_browser:
         print("Installing the headless browser the images are drawn with")
         _run([_bin("playwright"), "install", "chromium"], check=False)
