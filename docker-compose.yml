@@ -18,6 +18,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./otoge_cache:/app/otoge_cache
+      - ./debug:/app/debug            # the raw page exports MAIMAI_DEBUG writes, so they survive the container
     init: true
     shm_size: "1gb"
     restart: unless-stopped
