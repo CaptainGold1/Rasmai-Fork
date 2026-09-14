@@ -175,6 +175,9 @@ class InternalApiServer:
                 if route.path == "/internal/servers":
                     self._send_json(200, dashboard.servers_payload())
                     return
+                if route.path == "/internal/notice":
+                    self._send_json(200, dashboard.notice_payload())
+                    return
                 if route.path == "/internal/connect-info":
                     self._connect_info(query)
                     return

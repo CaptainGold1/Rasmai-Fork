@@ -3,6 +3,7 @@ from rasmai.web.dashboard.analysis import (  # noqa: F401
     _chart_key,
 )
 from rasmai.web.dashboard.overview import (  # noqa: F401
+    notice_payload,
     servers_payload,
     servers_down_note,
     overview_payload,

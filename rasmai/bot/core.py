@@ -13,7 +13,7 @@ from rasmai.bot.ui.emoji import sync_application_emojis
 from rasmai.bot.tasks.history_watch import HistoryWatch
 from rasmai.bot.tasks.presence import ServerWatch
 from rasmai.config import (
-    DATABASE_PATH, GUILD_ID, MAX_CONCURRENT_RENDERS, MAX_CONCURRENT_SCRAPES, SCRAPE_WORKERS, SHARD_COUNT, WIKI_VIDEOS,
+    CONTROL_GUILD_ID, DATABASE_PATH, GUILD_ID, MAX_CONCURRENT_RENDERS, MAX_CONCURRENT_SCRAPES, SCRAPE_WORKERS, SHARD_COUNT, WIKI_VIDEOS,
 )
 from rasmai.images.render import render_html_to_image
 from rasmai.scraping import wiki
@@ -151,11 +151,14 @@ def command_tree_fingerprint() -> str:
     :rtype: str
     """
     payload = []
-    for command in bot.tree.get_commands():
-        try:
-            payload.append(command.to_dict(bot.tree))
-        except TypeError:
-            payload.append(command.to_dict())
+    # the control guild's own commands too, so editing one of those is a change worth syncing
+    scopes = [None] + ([discord.Object(id=CONTROL_GUILD_ID)] if CONTROL_GUILD_ID else [])
+    for scope in scopes:
+        for command in bot.tree.get_commands(guild=scope):
+            try:
+                payload.append(command.to_dict(bot.tree))
+            except TypeError:
+                payload.append(command.to_dict())
     encoded = json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
@@ -189,6 +192,10 @@ async def sync_commands_if_changed() -> None:
         else:
             synced = await bot.tree.sync()
             logger.info(f"Synced {len(synced)} global command(s); Discord can take up to an hour to show new ones everywhere")
+            if CONTROL_GUILD_ID:
+                # the control server's own commands are a separate set, and land there at once
+                control = await bot.tree.sync(guild=discord.Object(id=CONTROL_GUILD_ID))
+                logger.info(f"Synced {len(control)} command(s) to the control guild {CONTROL_GUILD_ID}")
     except discord.HTTPException as error:
         retry = getattr(error, "retry_after", None)
         logger.error(f"Command sync failed: {error}" + (f" (retry after {retry:.0f}s)" if retry else ""))

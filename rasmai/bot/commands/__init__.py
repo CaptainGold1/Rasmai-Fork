@@ -48,3 +48,6 @@ from rasmai.bot.commands.account import (  # noqa: F401
     invite,
     delete_account,
 )
+from rasmai.bot.commands.notice import (  # noqa: F401
+    notice,
+)

@@ -26,6 +26,20 @@ INTERNAL_API_SECRET = os.getenv("RASMAI_INTERNAL_SECRET", "").strip()
 # the only Discord account the developer page answers to; everyone else gets a 404 from it
 ADMIN_USER_ID = os.getenv("MAIMAI_ADMIN_ID", "178277628522921984").strip()
 
+# where /notice is registered. A guild command exists only in that one server, so the rest of
+# Discord never sees it in the picker; the admin check is what actually stops anyone using it.
+CONTROL_GUILD_ID = int(os.getenv("MAIMAI_CONTROL_GUILD_ID", "1326596020146143283") or 0)
+
+# the band the site shows until one is set from Discord; taking that one down leaves the site bare
+DEFAULT_NOTICE = {
+    "text": "Rasmai is moving to rasmai.lol. Your account and scores move with it, so there is nothing to "
+            "re-link. This address keeps working until the switch.",
+    "tone": "notice",
+    "link": "",
+    "id": "move-rasmai-lol",
+    "hideOnHost": "rasmai.lol",
+}
+
 # the linking walkthrough recordings: "walkthrough" in the container, web/public in a checkout
 WALKTHROUGH_DIR = next((p for p in (Path("walkthrough"), Path("web/public/walkthrough")) if p.is_dir()), Path("walkthrough"))
 # where a bot-run cloudflared tunnel should point: the public site, which is the Next.js server

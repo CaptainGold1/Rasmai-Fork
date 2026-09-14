@@ -10,6 +10,22 @@ from rasmai.web.dashboard.picks import _englished, trait_practice
 from rasmai.web.dashboard.refresh import refresh_jobs
 
 
+def notice_payload() -> Dict[str, Any]:
+    """The banner every visitor should see, whoever they are.
+
+    Public and player-free. Until someone sets one from Discord there is no stored notice and the
+    built-in one stands; once set, what they set is the whole truth, empty text included.
+
+    :rtype: Dict[str, Any]
+    """
+    from rasmai.config import DEFAULT_NOTICE
+    from rasmai.storage.db import site_notice_get
+    stored = site_notice_get()
+    notice = dict(DEFAULT_NOTICE) if stored is None else stored
+    # whoever set it is nobody's business but ours
+    return {key: value for key, value in notice.items() if key != "setBy"}
+
+
 def servers_payload() -> Dict[str, Any]:
     """Whether maimai DX NET can be read right now, from the presence watch: maintenance on the schedule, or a site that does not answer.
 

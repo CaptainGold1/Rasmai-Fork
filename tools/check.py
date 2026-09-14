@@ -718,6 +718,79 @@ def _version_rollover():
     return problems
 
 
+def _notice_writes(admin, notice_payload):
+    from rasmai.storage.db import site_notice_set
+    problems = []
+    if not (notice_payload().get("text") and notice_payload().get("id")):
+        problems.append("with nothing set the site should still have its built-in banner")
+
+    stored = site_notice_set("  Two   spaces  collapse ", "warning", "https://example.com", by=admin)
+    shown = notice_payload()
+    if shown.get("text") != "Two spaces collapse" or shown.get("tone") != "warning":
+        problems.append(f"the banner should read back as it was set: {shown.get('text')!r} {shown.get('tone')!r}")
+    if "setBy" in shown:
+        problems.append("the payload names who set the banner, and visitors should not see that")
+    if site_notice_set("Two spaces collapse")["id"] != stored["id"]:
+        problems.append("the same words should keep their id, so a dismissal is not undone by a re-save")
+    if site_notice_set("Different words entirely")["id"] == stored["id"]:
+        problems.append("new words should get a new id, so everyone sees the new banner")
+    for bad in ("http://insecure", "javascript:alert(1)", "data:text/html,<script>", "https://x.example/\" onmouseover="):
+        if site_notice_set("x", "notice", bad)["link"]:
+            problems.append(f"a link that is not a plain https address should be dropped: {bad!r}")
+    if site_notice_set("x", "purple")["tone"] != "notice":
+        problems.append("an unknown tone should fall back rather than reach the page as a class name")
+    if len(site_notice_set("A" * 5000)["text"]) > 300:
+        problems.append("a banner should not be able to run the length of the page")
+    # a right-to-left override can print a link backwards, and a zero-width space hides inside a word
+    tricky = "Go to " + chr(0x202E) + "moc.live" + chr(0x202C) + " now" + chr(0x200B) + "please"
+    if site_notice_set(tricky)["text"] != "Go to moc.live nowplease":
+        problems.append("characters that let text lie about itself should not survive")
+    if site_notice_set("one" + chr(10) + "two" + chr(13) + chr(10) + "three")["text"] != "one two three":
+        problems.append("a banner is one line, however it was typed")
+    # a row the command never wrote, as if the table had been edited by hand or restored from a backup
+    from rasmai.storage.db.sources import _clean
+    forged = _clean({"text": "x", "tone": "evil", "link": "javascript:alert(1)", "id": "i"})
+    if forged["link"] or forged["tone"] != "notice":
+        problems.append("a row that never went through the command should still be cleaned when read")
+
+    site_notice_set("")
+    if notice_payload().get("text"):
+        problems.append("a banner taken down should stay down, not fall back to the built-in one")
+    return problems
+
+
+@check("the site banner is set by one account, in one place, and says only what it was told to")
+def _site_notice():
+    import discord
+    import tempfile, pathlib
+    from rasmai.bot.core import bot
+    from rasmai.config import ADMIN_USER_ID, CONTROL_GUILD_ID
+    from rasmai.storage.db import connection as store
+    from rasmai.web.dashboard import notice_payload
+
+    problems = []
+    # the command must not be in the global set, or it lands in every server's picker
+    if any(command.name == "notice" for command in bot.tree.get_commands()):
+        problems.append("/notice is registered globally, so everyone can see it")
+    if CONTROL_GUILD_ID and not any(c.name == "notice" for c in bot.tree.get_commands(guild=discord.Object(id=CONTROL_GUILD_ID))):
+        problems.append("/notice is not registered in the control guild, so nobody can reach it")
+
+    source = (ROOT / "rasmai" / "bot" / "commands" / "notice.py").read_text(encoding="utf-8")
+    if "ADMIN_USER_ID" not in source:
+        problems.append("/notice does not check who is running it")
+    if not ADMIN_USER_ID:
+        problems.append("no admin account is set, so the check would let anyone through")
+
+    was, store.DATABASE_PATH = store.DATABASE_PATH, pathlib.Path(tempfile.mkdtemp()) / "t.sqlite3"
+    store._database_ready = False
+    try:
+        problems += _notice_writes(ADMIN_USER_ID, notice_payload)
+    finally:
+        store.DATABASE_PATH = was
+        store._database_ready = False
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:
