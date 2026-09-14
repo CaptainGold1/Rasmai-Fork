@@ -7,7 +7,7 @@ import re
 from rasmai.security import import_limiter, public_reason, refresh_limiter
 from rasmai.storage.db import delete_connected_account, get_connected_account
 from rasmai.bot.state.cache import forget_analysis
-from rasmai.web.dashboard.admin import admin_payload, is_admin
+from rasmai.web.dashboard.admin import account_detail, accounts_payload, admin_payload, is_admin
 from rasmai.web.dashboard.analysis import analysis_for_user
 from rasmai.web.dashboard.areas import areas_payload
 from rasmai.web.dashboard.lookup import chart_payload, patterns_payload, search_payload, video_payload
@@ -16,6 +16,7 @@ from rasmai.web.dashboard.picks import new_charts_payload, picks_payload
 from rasmai.web.dashboard.refresh import refresh_jobs
 from rasmai.web.dashboard.scores import charts_payload, export_payload, play_payload, recent_payload
 from rasmai.web.dashboard.imports import import_payload
+from rasmai.web.dashboard.public_profile import set_sharing
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,15 @@ def handle_get(handler: Any, path: str, query: Dict[str, List[str]], user: Dict[
             logger.warning("developer page refused for %s", user["id"])
             handler._send_json(404, {"ok": False, "error": "not_found"})
             return True
-        handler._send_json(200, admin_payload())
+        who = (query.get("user") or [""])[0].strip()
+        if who:
+            if not re.fullmatch(r"\d{5,25}", who):
+                handler._send_json(400, {"ok": False, "error": "bad_user"})
+                return True
+            detail = account_detail(who)
+            handler._send_json(200 if detail else 404, detail or {"ok": False, "error": "not_found"})
+            return True
+        handler._send_json(200, {**admin_payload(), "accounts_list": accounts_payload()})
         return True
     if account is None:
         handler._send_json(404, {"ok": False, "error": "not_linked"})
@@ -145,11 +154,16 @@ def handle_post(handler: Any, path: str, user: Dict[str, Any], payload: Optional
     :type user: Dict[str, Any]
     :rtype: bool
     """
-    if path not in ("/internal/me/refresh", "/internal/me/unlink", "/internal/me/import"):
+    if path not in ("/internal/me/refresh", "/internal/me/unlink", "/internal/me/import", "/internal/me/sharing"):
         return False
     account = get_connected_account(user["id"])
     if account is None:
         handler._send_json(404, {"ok": False, "error": "not_linked"})
+        return True
+    if path == "/internal/me/sharing":
+        body = payload or {}
+        state = set_sharing(user["id"], body.get("on"), body.get("sections"), bool(body.get("rotate")), account)
+        handler._send_json(200, state)
         return True
     if path == "/internal/me/refresh":
         running = refresh_jobs.status(user["id"])

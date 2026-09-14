@@ -12,11 +12,12 @@ import { Charts } from "./Charts";
 import { NewCharts } from "./NewCharts";
 import { Picks } from "./Picks";
 import { Account } from "./Account";
+import { AdminPanel } from "./Admin";
 import { Best50 } from "./Best50";
 import { Frame } from "./Frame";
 import { OverviewTab } from "./OverviewTab";
 import { Recent } from "./Recent";
-import { type Tab, TABS, Tabs, RefreshBar } from "./Tabs";
+import { type Tab, TABS, Tabs, RefreshBar, tabsFor } from "./Tabs";
 
 export function Dash() {
   const [me, setMe] = useState<Overview | null>(null);
@@ -84,7 +85,7 @@ export function Dash() {
       setVisited((v) => new Set(v).add("areas"));
       return;
     }
-    const next: Tab = TABS.some((t) => t.key === hash) ? hash : "overview";
+    const next: Tab = tabsFor(true).some((t) => t.key === hash) ? hash : "overview";
     setTab(next);
     setVisited((v) => new Set(v).add(next));
   }, []);
@@ -271,7 +272,7 @@ export function Dash() {
         </div>
       </section>
 
-      <Tabs current={tab} onPick={pick} />
+      <Tabs current={tab} onPick={pick} admin={me.admin} />
 
       {refresh?.running && <RefreshBar status={refresh} />}
 
@@ -333,6 +334,11 @@ export function Dash() {
         {visited.has("account") && (
           <div hidden={tab !== "account"}>
             <Account me={me} refresh={refresh} onRefresh={(st) => setRefresh(st)} />
+          </div>
+        )}
+        {me.admin && visited.has("admin") && (
+          <div hidden={tab !== "admin"}>
+            <AdminPanel />
           </div>
         )}
       </main>

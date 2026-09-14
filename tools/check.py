@@ -452,6 +452,60 @@ def _losses():
     return problems
 
 
+@check("a public profile carries only what its owner turned on")
+def _public_profile():
+    import tempfile, pathlib
+    from rasmai.storage.db import connection as store
+    was, store.DATABASE_PATH = store.DATABASE_PATH, pathlib.Path(tempfile.mkdtemp()) / "t.sqlite3"
+    store._database_ready = False
+    try:
+        from rasmai.bot.state.prefs import PUBLIC_SECTIONS
+        from rasmai.storage.db import get_connected_account, upsert_connected_account
+        from rasmai.web.dashboard.public_profile import public_payload, set_sharing, sharing_payload
+        problems = []
+        upsert_connected_account("u1", "intl", "cookie://x",
+                                 official_profile={"name": "Nek", "rating": 13551, "totalPlayCount": 574})
+        account = get_connected_account("u1")
+
+        if sharing_payload("u1", account)["on"]:
+            problems.append("a fresh account is already sharing; the profile must be opt-in")
+        state = set_sharing("u1", True, {"best50": True}, account=account)
+        slug = state["url"].rsplit("/", 1)[-1]
+        if not state["on"] or len(slug) < 16:
+            problems.append(f"turning sharing on gave no usable link: {state}")
+            return problems
+
+        shown = public_payload(slug)
+        if shown is None:
+            problems.append("the link does not answer while sharing is on")
+            return problems
+        if "userId" in shown or "token" in shown or "u1" in str(shown):
+            problems.append("the public payload leaks the account behind it")
+        for name in PUBLIC_SECTIONS:
+            if name != "best50" and name in shown:
+                problems.append(f"{name} was never turned on but is on the profile")
+        if "best50" not in shown:
+            problems.append("best50 was turned on but is missing")
+
+        # switching it off has to take effect at once, not at the next link
+        account = get_connected_account("u1")
+        set_sharing("u1", False, account=account)
+        if public_payload(slug) is not None:
+            problems.append("the link still answers after sharing was switched off")
+
+        # a fresh link must break the old one
+        set_sharing("u1", True, account=get_connected_account("u1"))
+        again = set_sharing("u1", True, rotate=True, account=get_connected_account("u1"))
+        if public_payload(slug) is not None:
+            problems.append("the old link still answers after a new one was issued")
+        if public_payload(again["url"].rsplit("/", 1)[-1]) is None:
+            problems.append("the new link does not answer")
+        return problems
+    finally:
+        store.DATABASE_PATH = was
+        store._database_ready = False
+
+
 @check("the linking walkthroughs are web sized and small enough for Discord")
 def _walkthrough():
     from rasmai.config import WALKTHROUGH_DIR

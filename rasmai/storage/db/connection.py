@@ -40,10 +40,14 @@ def get_database_connection() -> sqlite3.Connection:
                     )
                     """
                 )
-                try:
-                    setup.execute("ALTER TABLE connected_accounts ADD COLUMN session_expired TEXT NOT NULL DEFAULT ''")
-                except sqlite3.OperationalError:
-                    pass      # already there
+                for column in ("session_expired TEXT NOT NULL DEFAULT ''",
+                               "share_slug TEXT",                          # the public profile link, unset until asked for
+                               "seen_at TEXT"):                            # last time the person used the bot or the site
+                    try:
+                        setup.execute(f"ALTER TABLE connected_accounts ADD COLUMN {column}")
+                    except sqlite3.OperationalError:
+                        pass      # already there
+                setup.execute("CREATE UNIQUE INDEX IF NOT EXISTS connected_accounts_share ON connected_accounts(share_slug)")
                 setup.execute(
                     """
                     CREATE TABLE IF NOT EXISTS login_codes (

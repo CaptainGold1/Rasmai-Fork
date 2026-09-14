@@ -11,7 +11,16 @@ DEFAULTS: Dict[str, Any] = {
     "challenge": "balanced",     # how far above your usual scores targets sit
     "history": False,            # read the recent-plays page once a day so no play is missed
     "notify": False,             # DM what the daily read found: new bests and a moved rating
+    # the public profile is off until asked for, and each section of it is opted into separately
+    "public": False,             # a link anyone can open, with only the sections below on it
+    "public_best50": True,       # the fifty charts the rating is made of
+    "public_traits": False,      # what they lose points on and what they shine at
+    "public_recent": False,      # the plays the bot has seen, newest first
+    "public_areas": False,       # area travel and its rewards
 }
+
+# what a public profile may carry, beyond the name and rating that are the point of having one
+PUBLIC_SECTIONS = ("best50", "traits", "recent", "areas")
 
 LAYOUTS = ("both", "embed", "image")
 NEW_DIFFICULTIES = ("any", "master", "remaster", "expert", "advanced", "basic")

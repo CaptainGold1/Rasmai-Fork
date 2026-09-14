@@ -21,6 +21,24 @@ type AdminData = {
   };
   live: Record<string, number | boolean | number[] | undefined>;
   generatedAt: string;
+  accounts_list?: Account[];
+};
+
+type Account = Person & {
+  userId: string; region: string; player: string; rating: number;
+  linkedAt: string; readAt: string; seenAt: string;
+  expired: boolean; shared: boolean; plays: number; judged: number;
+};
+
+type Detail = Person & {
+  userId: string; region: string; player: string; title: string; dan: string; rating: number;
+  totalPlayCount: number; charts: number; linkedAt: string; readAt: string; seenAt: string;
+  expired: string; shared: boolean;
+  settings: Record<string, string | boolean>;
+  counts: Record<string, number | string | null>;
+  quietRead: { readAt: string; added: number; error: string };
+  history: { recordedAt: string; rating: number }[];
+  activity: { day: string; plays: number }[];
 };
 
 const SLICES = ["#ff3d8f", "#5cd3e8", "#f0c04a", "#8f7dff", "#4fd18b", "#ff9f5c", "#9aa0b5"];
@@ -137,9 +155,30 @@ function Who({ person, id }: { person: Person; id: string }) {
 }
 
 export function Admin() {
+  const [me, setMe] = useState<Overview["user"] | undefined>();
+  useEffect(() => {
+    getJSON<Overview>("/api/me").then((d) => setMe(d.user)).catch(() => undefined);
+  }, []);
+  return (
+    <Frame user={me}>
+      <AdminPanel />
+    </Frame>
+  );
+}
+
+export function AdminPanel() {
   const [data, setData] = useState<AdminData | null>(null);
   const [error, setError] = useState("");
-  const [me, setMe] = useState<Overview["user"] | undefined>();
+  const [open, setOpen] = useState<Detail | null>(null);
+  const [opening, setOpening] = useState("");
+
+  const openUser = (userId: string) => {
+    setOpening(userId);
+    getJSON<Detail>(`/api/me/admin?user=${encodeURIComponent(userId)}`)
+      .then((d) => setOpen(d))
+      .catch(() => undefined)
+      .finally(() => setOpening(""));
+  };
 
   const load = useCallback(() => {
     getJSON<AdminData>("/api/me/admin")
@@ -151,7 +190,6 @@ export function Admin() {
   }, []);
 
   useEffect(() => {
-    getJSON<Overview>("/api/me").then((d) => setMe(d.user)).catch(() => undefined);
     load();
     const timer = setInterval(load, 15000);
     return () => clearInterval(timer);
@@ -160,26 +198,22 @@ export function Admin() {
   // the route answers 404 to everyone but the one account, so the page says the same rather than hinting
   if (error) {
     return (
-      <Frame user={me}>
-        <div className="gate">
-          <h1>
-            Nothing <em>here</em>.
-          </h1>
-          <p className="lede">This page does not exist.</p>
-          <a className="button" href="/me/">
-            back to your dashboard →
-          </a>
-        </div>
-      </Frame>
+      <div className="gate">
+        <h1>
+          Nothing <em>here</em>.
+        </h1>
+        <p className="lede">This page does not exist.</p>
+        <a className="button" href="/me/">
+          back to your dashboard →
+        </a>
+      </div>
     );
   }
   if (!data) {
     return (
-      <Frame user={me}>
-        <div className="gate">
-          <p className="hint">Loading…</p>
-        </div>
-      </Frame>
+      <div className="gate">
+        <p className="hint">Loading…</p>
+      </div>
     );
   }
 
@@ -189,7 +223,7 @@ export function Admin() {
   const month = data.activity.reduce((sum, d) => sum + d.plays, 0);
   const attention = data.expired.length + data.failingReads.length;
   return (
-    <Frame user={me}>
+    <>
       <main className="panel admin">
         <section className="ident">
           <div className="ident-who">
@@ -313,6 +347,51 @@ export function Admin() {
 
         <section className="ledger">
           <div className="ledger-head">
+            <Label>every account · {data.accounts_list?.length ?? 0}</Label>
+            <span className="mono hint">most recently active first</span>
+          </div>
+          {!data.accounts_list?.length ? (
+            <Empty>Nobody has linked an account yet.</Empty>
+          ) : (
+            <div className="scroll">
+              <table className="tbl compact keep admin-users">
+                <thead>
+                  <tr>
+                    <th>Who</th>
+                    <th>Player</th>
+                    <th className="c-num">Rating</th>
+                    <th className="c-num">Plays</th>
+                    <th className="c-num">Last seen</th>
+                    <th>State</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.accounts_list.map((a) => (
+                    <tr key={a.userId} className="clickable" onClick={() => openUser(a.userId)}>
+                      <td>
+                        <Who person={a} id={a.userId} />
+                      </td>
+                      <td className="mono">{a.player || "—"}</td>
+                      <td className="c-num mono strong">{num(a.rating)}</td>
+                      <td className="c-num mono">{num(a.plays)}</td>
+                      <td className="c-num mono dim">{a.seenAt ? when(a.seenAt) : "never"}</td>
+                      <td className="mono">
+                        {a.expired ? <span className="bad">needs relinking</span> : <span className="dim">ok</span>}
+                        {a.shared ? <span className="dim"> · shared</span> : ""}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {opening && <p className="hint">Opening {opening}…</p>}
+        </section>
+
+        {open && <UserDetail detail={open} onClose={() => setOpen(null)} />}
+
+        <section className="ledger">
+          <div className="ledger-head">
             <Label>source caches</Label>
             <span className="mono hint">shared by everyone, and the same size whoever is linked</span>
           </div>
@@ -344,6 +423,104 @@ export function Admin() {
           )}
         </section>
       </main>
-    </Frame>
+    </>
+  );
+}
+
+/** One account in full, as a sheet over the page. Nothing here includes the stored maimai session. */
+function UserDetail({ detail, onClose }: { detail: Detail; onClose: () => void }) {
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, [onClose]);
+
+  const settings = Object.entries(detail.settings ?? {});
+  const peak = Math.max(1, ...detail.activity.map((d) => d.plays));
+  return (
+    <div className="sheet-back" role="dialog" aria-modal="true" aria-label={`${detail.player || detail.userId} in full`} onClick={onClose}>
+      <div className="sheet-card" onClick={(e) => e.stopPropagation()}>
+        <div className="ledger-head">
+          <Label>account</Label>
+          <button type="button" className="linkish" onClick={onClose}>
+            close
+          </button>
+        </div>
+        <section className="ident">
+          <div className="ident-who">
+            <Who person={detail} id={detail.userId} />
+            <h1>{detail.player || "not read yet"}</h1>
+            <div className="ident-sub mono">
+              {[detail.dan, detail.title].filter(Boolean).join(" · ") || "no title"} · {detail.region.toUpperCase()}
+            </div>
+          </div>
+          <div className="readout big">
+            <span className="lbl">rating</span>
+            <span className="val">{num(detail.rating)}</span>
+            <span className="lbl">charts</span>
+            <span className="val">{num(detail.charts)}</span>
+          </div>
+        </section>
+
+        {detail.expired && <p className="hint bad">Session expired {when(detail.expired)}; reads are stopped until they run /login.</p>}
+
+        <div className="two-up">
+          <section className="ledger">
+            <div className="ledger-head">
+              <Label>when</Label>
+            </div>
+            <Facts
+              rows={[
+                ["last used the app", detail.seenAt ? when(detail.seenAt) : "never"],
+                ["last score read", when(detail.readAt)],
+                ["linked", when(detail.linkedAt)],
+                ["first play stored", String(detail.counts.firstPlay ?? "—").slice(0, 10)],
+                ["latest play stored", String(detail.counts.lastPlay ?? "—").slice(0, 10)],
+                ["daily read", detail.quietRead.error ? <span className="bad">{detail.quietRead.error}</span> : detail.quietRead.readAt ? `${when(detail.quietRead.readAt)} · +${num(detail.quietRead.added)}` : "never run"],
+              ]}
+            />
+          </section>
+          <section className="ledger">
+            <div className="ledger-head">
+              <Label>what is stored</Label>
+            </div>
+            <Facts
+              rows={[
+                ["plays", num(Number(detail.counts.plays ?? 0))],
+                ["judgement pages", num(Number(detail.counts.judgements ?? 0))],
+                ["rating points", num(Number(detail.counts.ratingPoints ?? 0))],
+                ["play counts", num(Number(detail.counts.playCounts ?? 0))],
+                ["area readings", num(Number(detail.counts.areaReadings ?? 0))],
+                ["plays on the cabinet", num(detail.totalPlayCount)],
+                ["public profile", detail.shared ? "shared" : "private"],
+              ]}
+            />
+          </section>
+        </div>
+
+        {detail.activity.length > 0 && (
+          <section className="ledger">
+            <div className="ledger-head">
+              <Label>their plays · last 30 days with any</Label>
+              <span className="mono hint">peak {num(peak)} in a day</span>
+            </div>
+            <div className="admin-bars">
+              {detail.activity.map((d) => (
+                <span key={d.day} className="admin-bar" title={`${d.day}: ${d.plays} plays`}>
+                  <span style={{ height: `${Math.max(3, (100 * d.plays) / peak)}%` }} />
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="ledger">
+          <div className="ledger-head">
+            <Label>their settings</Label>
+          </div>
+          <Facts rows={settings.map(([key, value]) => [key.replace(/_/g, " "), String(value)])} />
+        </section>
+      </div>
+    </div>
   );
 }

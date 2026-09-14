@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type RefreshStatus } from "./api";
 
-export type Tab = "overview" | "picks" | "new" | "traits" | "best50" | "charts" | "recent" | "chart" | "areas" | "account";
+export type Tab = "overview" | "picks" | "new" | "traits" | "best50" | "charts" | "recent" | "chart" | "areas" | "account" | "admin";
 
 // what to play, then how you play, then your scores, then the reference tabs
 export const TABS: { key: Tab; label: string }[] = [
@@ -19,6 +19,13 @@ export const TABS: { key: Tab; label: string }[] = [
   { key: "account", label: "Account" },
 ];
 
+// only ever added for the one account the internal API answers the developer route for
+export const ADMIN_TAB: { key: Tab; label: string } = { key: "admin", label: "Developer" };
+
+export function tabsFor(admin?: boolean): { key: Tab; label: string }[] {
+  return admin ? [...TABS, ADMIN_TAB] : TABS;
+}
+
 const STAGE_LABEL: Record<string, string> = {
   queued: "Waiting for a free slot",
   login: "Signing in to maimai DX NET",
@@ -32,7 +39,8 @@ const STAGE_LABEL: Record<string, string> = {
 };
 
 /** The section strip. It scrolls sideways on a phone; the edges fade where there is more, and the chosen tab is kept in view. */
-export function Tabs({ current, onPick }: { current: Tab; onPick: (t: Tab) => void }) {
+export function Tabs({ current, onPick, admin }: { current: Tab; onPick: (t: Tab) => void; admin?: boolean }) {
+  const shown = tabsFor(admin);
   const strip = useRef<HTMLElement>(null);
   const [more, setMore] = useState("none");
   const measure = useCallback(() => {
@@ -54,7 +62,7 @@ export function Tabs({ current, onPick }: { current: Tab; onPick: (t: Tab) => vo
   return (
     <div className="tabs-wrap">
       <nav className="tabs" aria-label="Sections" ref={strip} data-more={more} onScroll={measure}>
-        {TABS.map((t) => (
+        {shown.map((t) => (
           <button key={t.key} type="button" className={t.key === current ? "on" : ""} aria-current={t.key === current ? "true" : undefined} onClick={() => onPick(t.key)}>
             {t.label}
           </button>

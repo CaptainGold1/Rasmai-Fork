@@ -8,7 +8,7 @@ from rasmai.engine import analysis
 from rasmai.bot.state.cache import CachedAnalysis, cache_get
 from rasmai.bot.ui.progress import Progress
 from rasmai.config import RECHECK_AFTER
-from rasmai.storage.db import save_play_counts
+from rasmai.storage.db import touch_account, save_play_counts
 
 from rasmai.bot.builders.results.stored import (  # noqa: F401
     downtime_note,
@@ -100,6 +100,8 @@ async def load_analysis(interaction: discord.Interaction, force: bool = False) -
     :rtype: Optional[CachedAnalysis]
     """
     user_id = str(interaction.user.id)
+    # every command counts as using the app, not just a read: the developer page reports on it
+    asyncio.get_running_loop().run_in_executor(None, touch_account, user_id)
     if not force:
         cached = cache_get(user_id)
         if cached is not None:

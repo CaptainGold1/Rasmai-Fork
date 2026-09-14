@@ -44,6 +44,18 @@ from rasmai.web.dashboard.files import (  # noqa: F401
     jacket,
 )
 from rasmai.web.dashboard.imports import import_payload  # noqa: F401
+from rasmai.web.dashboard.admin import (  # noqa: F401
+    admin_payload,
+    accounts_payload,
+    account_detail,
+    is_admin,
+)
+from rasmai.web.dashboard.public_profile import (  # noqa: F401
+    public_payload,
+    sharing_payload,
+    set_sharing,
+    share_url,
+)
 from rasmai.web.dashboard.routes import (  # noqa: F401
     handle_get,
     handle_post,

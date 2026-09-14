@@ -153,6 +153,19 @@ class InternalApiServer:
                 if route.path == "/internal/status":
                     self._status(query)
                     return
+                if route.path.startswith("/internal/public/"):
+                    # no sign-in: the slug is the whole credential, and the payload carries only
+                    # what its owner opted into. A profile switched off answers as if it never existed.
+                    slug = route.path[len("/internal/public/"):]
+                    if not login_attempt_allowed(self._client_key()):
+                        self._send_json(429, {"ok": False, "error": "rate_limited"})
+                        return
+                    shared = dashboard.public_payload(slug)
+                    if shared is None:
+                        self._send_json(404, {"ok": False, "error": "not_found"})
+                        return
+                    self._send_json(200, shared)
+                    return
                 if route.path == "/internal/servers":
                     self._send_json(200, dashboard.servers_payload())
                     return

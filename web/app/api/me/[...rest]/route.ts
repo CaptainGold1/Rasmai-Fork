@@ -37,8 +37,15 @@ export async function POST(request: Request, { params }: Params) {
   const user = currentUser(request);
   if (!user) return json(401, { ok: false, error: "signed_out" });
   const path = tail((await params).rest);
-  if (!path || !["refresh", "unlink", "import"].includes(path)) return json(404, { ok: false, error: "not_found" });
+  if (!path || !["refresh", "unlink", "import", "sharing"].includes(path)) return json(404, { ok: false, error: "not_found" });
   let body: unknown = {};
+  if (path === "sharing") {
+    try {
+      body = JSON.parse(await request.text());
+    } catch {
+      return json(400, { ok: false, error: "bad_json" });
+    }
+  }
   if (path === "import") {
     if (Number(request.headers.get("content-length") ?? 0) > IMPORT_BYTES) return json(413, { ok: false, error: "too_large" });
     const text = await request.text();

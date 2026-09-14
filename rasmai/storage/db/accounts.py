@@ -126,6 +126,10 @@ def login_code_expiry(created: Optional[datetime] = None) -> datetime:
     return (created or datetime.now()) + LOGIN_CODE_TTL
 
 
+# the minute each account was last noted as active, so a run of commands writes once
+_SEEN: Dict[str, str] = {}
+
+
 def upsert_connected_account(user_id: str, region: str, token: str, official_profile: Optional[Dict[str, Any]] = None, snapshot: Optional[Dict[str, Any]] = None) -> None:
     now = datetime.now().isoformat()
     connection = get_database_connection()
@@ -178,7 +182,68 @@ def get_connected_account(user_id: str) -> Optional[Dict[str, Any]]:
         "createdAt": row["created_at"],
         "updatedAt": row["updated_at"],
         "sessionExpired": row["session_expired"] or "",
+        "shareSlug": row["share_slug"] or "",
+        "seenAt": row["seen_at"] or "",
     }
+
+
+def touch_account(user_id: str) -> None:
+    """Note that the person used the bot or the site just now, to the minute.
+
+    Written at most once a minute per account so a burst of commands is one write, not dozens.
+
+    :param user_id: The Discord user id.
+    :type user_id: str
+    """
+    stamp = datetime.now().replace(second=0, microsecond=0).isoformat()
+    if _SEEN.get(user_id) == stamp:
+        return
+    _SEEN[user_id] = stamp
+    connection = get_database_connection()
+    try:
+        with connection:
+            connection.execute("UPDATE connected_accounts SET seen_at = ? WHERE user_id = ?", (stamp, user_id))
+    finally:
+        connection.close()
+
+
+def set_share_slug(user_id: str, slug: Optional[str]) -> Optional[str]:
+    """Give the account a public profile address, or take it away with ``None``.
+
+    A new slug replaces the old one, so a link that has been passed around stops working the
+    moment the person asks for a fresh one.
+
+    :param user_id: The Discord user id.
+    :type user_id: str
+    :param slug: The new slug, or ``None`` to remove the public profile.
+    :type slug: Optional[str]
+    :returns: The slug now in force, or ``None``.
+    :rtype: Optional[str]
+    """
+    connection = get_database_connection()
+    try:
+        with connection:
+            connection.execute("UPDATE connected_accounts SET share_slug = ? WHERE user_id = ?", (slug, user_id))
+    finally:
+        connection.close()
+    return slug
+
+
+def account_by_share_slug(slug: str) -> Optional[Dict[str, Any]]:
+    """The account a public profile link points at, or ``None`` when nothing matches.
+
+    :param slug: The slug from the address.
+    :type slug: str
+    :rtype: Optional[Dict[str, Any]]
+    """
+    if not slug or not re.fullmatch(r"[A-Za-z0-9_-]{16,64}", slug):
+        return None
+    connection = get_database_connection()
+    try:
+        row = connection.execute("SELECT user_id FROM connected_accounts WHERE share_slug = ?", (slug,)).fetchone()
+    finally:
+        connection.close()
+    return get_connected_account(str(row["user_id"])) if row else None
 
 
 def mark_session_expired(user_id: str, when: str = "") -> None:

@@ -20,6 +20,12 @@ export type RefreshStatus = {
   finishedAt?: string;
 };
 
+export type Sharing = {
+  on: boolean;
+  url: string;
+  sections: { best50: boolean; traits: boolean; recent: boolean; areas: boolean };
+};
+
 export type Overview = {
   user: DiscordUser;
   linked: boolean;
@@ -31,6 +37,8 @@ export type Overview = {
   settings?: Record<string, string | boolean>;
   refresh?: RefreshStatus;
   sessionExpired?: string;
+  admin?: boolean;
+  sharing?: Sharing;
   playHistory?: number;
   judgements?: JudgementProfileData | null;
   sinceLast?: { since: string; ratingDelta: number; plays: number; newBests: number } | null;
