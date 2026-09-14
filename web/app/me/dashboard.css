@@ -546,3 +546,29 @@ html[data-standalone] .dash .ident { margin-top: 16px; }
 .expired b { color: var(--pink-edge); }
 :root[data-theme="dark"] .expired b { color: var(--pink); }
 .expired code { font-family: var(--font-mono), monospace; font-size: 13px; }
+
+/* the developer page: a month of plays, what fills the database, and who is behind an id */
+.admin-bars { display: flex; align-items: flex-end; gap: 3px; height: 132px; margin-top: 16px; }
+.admin-bar { flex: 1 1 0; display: flex; align-items: flex-end; height: 100%; min-width: 0; border-radius: 2px 2px 0 0; overflow: hidden; }
+.admin-bar > span { display: block; width: 100%; background: var(--pink); border-radius: 2px 2px 0 0; }
+.admin-bar.empty > span { background: var(--line); }
+.admin-bar:hover > span { background: var(--cyan); }
+.admin-axis { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11.5px; color: var(--muted); }
+.stack { display: flex; height: 26px; margin-top: 16px; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.stack > span { display: block; min-width: 2px; }
+.keys { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px 20px; }
+.keys li { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+.keys i { width: 11px; height: 11px; border-radius: 2px; flex: 0 0 auto; }
+.keys b { margin-left: auto; font-weight: 600; color: var(--ink-2); }
+.gauge { margin: 0 0 14px; }
+.gauge-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 13.5px; margin-bottom: 6px; }
+.people { list-style: none; margin: 6px 0 0; padding: 0; }
+.people li { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.people li:last-child { border-bottom: 0; }
+.who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.who img, .who-blank { width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto; background: var(--paper-2); border: 1px solid var(--line); }
+.who-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.who-text .mono { font-size: 11.5px; }
+.hint.bad, .mono.bad { color: var(--pink-edge); }
+:root[data-theme="dark"] .hint.bad, :root[data-theme="dark"] .mono.bad { color: var(--pink); }
+@media (max-width: 720px) { .admin-bars { height: 96px; } .keys { grid-template-columns: 1fr; } }

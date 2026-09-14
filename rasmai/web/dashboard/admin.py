@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
+import logging
 import os
 import sqlite3
 import time
@@ -7,7 +8,50 @@ import time
 from rasmai.config import ADMIN_USER_ID, DATABASE_PATH, MAX_CONCURRENT_RENDERS, MAX_CONCURRENT_SCRAPES
 from rasmai.storage.db.connection import get_database_connection
 
+logger = logging.getLogger(__name__)
+
 STARTED = time.time()
+
+# names and avatars resolved from Discord, kept for the life of the process: the page polls every
+# few seconds and a display name almost never changes, so one lookup per account is plenty
+_PEOPLE: Dict[str, Dict[str, str]] = {}
+
+
+def _shape(user: Any) -> Dict[str, str]:
+    return {"name": getattr(user, "global_name", None) or user.name, "handle": user.name,
+            "avatar": str(user.display_avatar.url) if getattr(user, "display_avatar", None) else ""}
+
+
+def people(ids: List[str]) -> Dict[str, Dict[str, str]]:
+    """Discord names and avatars for a handful of ids, from the bot's cache or by asking Discord.
+
+    The bot keeps no member cache, so most ids need a fetch. That is a network call on the web
+    server's thread, hence the short timeout and the process-lifetime cache; a failure just leaves
+    the id showing as itself.
+
+    :param ids: The Discord user ids to name.
+    :type ids: List[str]
+    :rtype: Dict[str, Dict[str, str]]
+    """
+    import asyncio
+    wanted = [str(i) for i in dict.fromkeys(ids) if str(i) not in _PEOPLE]
+    if wanted:
+        try:
+            from rasmai.bot.core import bot
+            loop = getattr(bot, "loop", None)
+            for user_id in wanted:
+                found = bot.get_user(int(user_id))
+                if found is None and loop is not None and loop.is_running():
+                    found = asyncio.run_coroutine_threadsafe(bot.fetch_user(int(user_id)), loop).result(timeout=4)
+                if found is not None:
+                    _PEOPLE[user_id] = _shape(found)
+        except Exception:
+            logger.info("could not name every account on the developer page", exc_info=False)
+    return {i: _PEOPLE[i] for i in {str(x) for x in ids} if i in _PEOPLE}
+
+
+def _named(rows: List[Dict[str, Any]], known: Dict[str, Dict[str, str]]) -> List[Dict[str, Any]]:
+    return [{**row, **(known.get(str(row.get("userId", "")), {}))} for row in rows]
 
 
 def is_admin(user_id: str) -> bool:
@@ -65,6 +109,10 @@ def admin_payload() -> Dict[str, Any]:
         sources = _rows(connection, "SELECT source, checked_at, LENGTH(payload) AS bytes, etag <> '' AS tagged "
                                     "FROM news_state ORDER BY source")
         busiest = _rows(connection, "SELECT user_id, COUNT(*) AS plays FROM chart_scores GROUP BY user_id ORDER BY plays DESC LIMIT 5")
+        since = (datetime.now() - timedelta(days=29)).strftime("%Y-%m-%d")
+        daily = _rows(connection, "SELECT substr(played_at, 1, 10) AS day, COUNT(*) AS plays, COUNT(DISTINCT user_id) AS people "
+                                  "FROM chart_scores WHERE played_at >= ? GROUP BY day ORDER BY day", since)
+        linked_on = _rows(connection, "SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS n FROM connected_accounts GROUP BY day ORDER BY day")
         page_size = _one(connection, "PRAGMA page_size") or 0
         store = {
             "bytes": int((_one(connection, "PRAGMA page_count") or 0) * page_size),
@@ -112,13 +160,29 @@ def admin_payload() -> Dict[str, Any]:
     except Exception:
         pass
 
+    seen = {row["day"]: row for row in daily}
+    activity = []
+    for back in range(29, -1, -1):
+        day = (datetime.now() - timedelta(days=back)).strftime("%Y-%m-%d")
+        row = seen.get(day)
+        activity.append({"day": day, "plays": int(row["plays"]) if row else 0,
+                         "people": int(row["people"]) if row else 0})
+    running = 0
+    growth = []
+    for row in linked_on:
+        running += int(row["n"])
+        growth.append({"day": row["day"], "accounts": running})
+
+    known = people([r["user_id"] for r in busiest] + [r["user_id"] for r in stale] + [r["user_id"] for r in reads])
     return {
         "accounts": [{"region": r["region"], "count": int(r["n"]), "expired": int(r["dead"] or 0)} for r in accounts],
-        "expired": [{"userId": r["user_id"], "region": r["region"], "since": r["session_expired"]} for r in stale],
-        "failingReads": [{"userId": r["user_id"], "lastRead": r["read_at"], "error": r["error"]} for r in reads],
+        "expired": _named([{"userId": r["user_id"], "region": r["region"], "since": r["session_expired"]} for r in stale], known),
+        "failingReads": _named([{"userId": r["user_id"], "lastRead": r["read_at"], "error": r["error"]} for r in reads], known),
         "sources": [{"source": r["source"], "checkedAt": r["checked_at"], "bytes": int(r["bytes"] or 0),
                      "etag": bool(r["tagged"])} for r in sources],
-        "busiest": [{"userId": r["user_id"], "plays": int(r["plays"])} for r in busiest],
+        "busiest": _named([{"userId": r["user_id"], "plays": int(r["plays"])} for r in busiest], known),
+        "activity": activity,
+        "growth": growth,
         "store": store,
         "live": live,
         "generatedAt": datetime.now().isoformat(timespec="seconds"),
