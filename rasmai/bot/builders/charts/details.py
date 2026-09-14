@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 import urllib.parse
 import discord
@@ -107,6 +108,25 @@ def _note_split(ref: ChartRef) -> str:
         return ""
     parts = [f"{row.get(field, 0):,} {name}" for field, name in
              (("t", "tap"), ("h", "hold"), ("s", "slide"), ("u", "touch"), ("b", "break")) if row.get(field)]
+    return "\n-# " + " · ".join(parts) if parts else ""
+
+
+def _chart_credit(ref: ChartRef) -> str:
+    """Who wrote the chart and the day it arrived, as a small line under the note split.
+
+    :param ref: The chart being shown.
+    :type ref: ChartRef
+    :rtype: str
+    """
+    parts = []
+    if ref.designer:
+        parts.append(f"charted by {ref.designer}")
+    if ref.released:
+        try:
+            day = datetime.fromisoformat(ref.released)
+            parts.append(f"added {day.day} {day.strftime('%b %Y')}")
+        except ValueError:
+            pass
     return "\n-# " + " · ".join(parts) if parts else ""
 
 

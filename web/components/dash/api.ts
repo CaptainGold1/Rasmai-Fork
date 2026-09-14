@@ -321,6 +321,7 @@ export type ChartDetail = {
   video: string | null;
   youtube: string;
   noteSplit: Record<string, number> | null;
+  released: string;
   patterns: ChartPattern[];
 };
 

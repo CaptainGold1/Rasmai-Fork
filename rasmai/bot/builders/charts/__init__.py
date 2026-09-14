@@ -9,7 +9,8 @@ from rasmai.bot.builders.charts.ladder import (
     ref_tier_name, format_ladder,
 )
 from rasmai.bot.builders.charts.details import (
-    unlock_field, video_button, youtube_search_url, chart_notes, _note_split, _pattern_field, _song_chart_line,
+    unlock_field, video_button, youtube_search_url, chart_notes, _chart_credit, _note_split, _pattern_field,
+    _song_chart_line,
 )
 from rasmai.bot.builders.charts.rows import _chart_rows, _score_lines, _song_card
 from rasmai.bot.builders.charts.page import (

@@ -14,7 +14,7 @@ from rasmai.bot.builders.charts.index import (
     chart_designer, charts_for, jacket_file, resolve_title, shared_index, song_record, version_name,
 )
 from rasmai.bot.builders.charts.ladder import _cutoffs, _version_label, chart_ladder, prediction_for
-from rasmai.bot.builders.charts.details import _note_split, _pattern_field, _song_chart_line, unlock_field
+from rasmai.bot.builders.charts.details import _chart_credit, _note_split, _pattern_field, _song_chart_line, unlock_field
 from rasmai.bot.builders.charts.page import DIFFICULTY_COLOUR, _default_page, _page_fields, difficulty_page, ensure_play_counts, last_play
 from rasmai.bot.builders.charts.rows import _chart_rows, _song_card
 
@@ -99,7 +99,9 @@ async def build_song(cached: Optional[CachedAnalysis], query: str, page: Optiona
     # embeds do not render markdown headings, so the chart name is a field title
     embed.add_field(
         name=f"{TIER_NAMES.get(ref.difficulty, ref.difficulty.upper())} {ref.level} · {ref.chart_type.upper()}",
-        value=f"const **{ref.constant:.1f}**" + (f" · {ref.notes:,} notes" if ref.notes else "") + _note_split(ref), inline=False,
+        value=f"const **{ref.constant:.1f}**" + (f" · {ref.notes:,} notes" if ref.notes else "")
+              + ("" if ref.intl else " · **Japan only**") + (" · **removed from the game**" if ref.deleted else "")
+              + _note_split(ref) + _chart_credit(ref), inline=False,
     )
     _page_fields(embed, cached, ref, row, play, detail)
     _pattern_field(embed, cached, ref)

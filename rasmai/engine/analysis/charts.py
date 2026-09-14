@@ -37,7 +37,9 @@ class ChartRef:
     intl: bool = True        # playable on the international version
     deleted: bool = False    # removed from the game
     bpm: float = 0.0
-    designer: str = ""       # the database records designers for standard charts only
+    designer: str = ""       # otoge-db credits standard charts only; dxrating fills the DX ones in
+    intl_known: bool = False  # whether a source that lists regions per chart, rather than per song, said so
+    released: str = ""       # the day the chart arrived, ISO 8601
 
     @property
     def key(self) -> Tuple[str, str, str]:
@@ -76,10 +78,11 @@ class ChartIndex:
     def playable(self, chart: ChartRef) -> bool:
         if chart.deleted:
             return False
-        # the database tracks the Japanese game, which gets a version months before everyone else,
-        # so its region flag lags for charts of the version the player is on and is distrusted there.
-        # Anything newer than their version has simply not reached them yet, flag or no flag.
-        if self.region == "intl" and not chart.intl and (not self.current_version or chart.version != self.current_version):
+        # otoge-db tracks the Japanese game, which gets a version months before everyone else, so its
+        # region flag lags for charts of the version the player is on and is distrusted there. dxrating
+        # lists regions per chart rather than per song and is taken at its word, which is what keeps a
+        # Japan-only chart of the current version out of the picks.
+        if self.region == "intl" and not chart.intl and (chart.intl_known or not self.current_version or chart.version != self.current_version):
             return False
         return True
 
@@ -156,6 +159,11 @@ def build_chart_index(songs_data: Dict[str, Dict[str, Any]], region: Optional[st
     :rtype: ChartIndex
     """
     index = ChartIndex(region)
+    try:
+        from rasmai.scraping import dxdata
+        known = dxdata.cached().get("sheets") or {}
+    except Exception:                    # the index has to build with or without the second source
+        known = {}
     for record in songs_data.values():
         raw_title = str(record.get("title", ""))
         title = raw_title.strip() or ("　" if raw_title else "")     # the untitled song's title is one ideographic space
@@ -167,6 +175,7 @@ def build_chart_index(songs_data: Dict[str, Dict[str, Any]], region: Optional[st
         artist = str(record.get("artist", ""))
         cover = str(record.get("cover", ""))
         version = version_major(record.get("version"))
+        folded = loose_title(title)
         bpm_match = re.search(r"\d+(?:\.\d+)?", str(record.get("bpm", "") or ""))
         bpm = float(bpm_match.group(0)) if bpm_match else 0.0
         for (chart_type, difficulty), (const_key, level_key, notes_key) in _LEVEL_KEYS.items():
@@ -181,6 +190,11 @@ def build_chart_index(songs_data: Dict[str, Dict[str, Any]], region: Optional[st
             except ValueError:
                 notes = 0
             designer = str(record.get(const_key.replace("_i", "_designer"), "") or "").strip()
+            facts = known.get(f"{folded}|{chart_type}|{difficulty}") or {}
+            if designer in ("", "-"):
+                designer = str(facts.get("d", ""))
+            if not notes and facts.get("n"):
+                notes = sum(int(count) for count in facts["n"])
             chart = ChartRef(
                 title=title,
                 chart_type=chart_type,
@@ -192,10 +206,12 @@ def build_chart_index(songs_data: Dict[str, Dict[str, Any]], region: Optional[st
                 artist=artist,
                 cover=cover,
                 version=version,
-                intl=intl,
+                intl=(facts.get("i", 1) != 0) if facts else intl,
+                intl_known=bool(facts),
                 deleted=deleted,
                 bpm=bpm,
                 designer=designer if designer != "-" else "",
+                released=str(facts.get("r", "")),
             )
             index.add(chart)
     return index

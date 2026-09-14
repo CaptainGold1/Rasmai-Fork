@@ -95,7 +95,8 @@ def version_name(record: Dict[str, Any]) -> str:
 
 
 def chart_designer(record: Dict[str, Any], ref: ChartRef) -> str:
-    # otoge-db only records designers for standard charts; a DX chart never borrows one
+    if ref.designer:
+        return ref.designer      # built into the index, from otoge-db for standard charts and dxrating for DX
     stem = _DESIGNER_KEYS.get(ref.difficulty, "")
     key = f"{'dx_' if ref.chart_type == 'dx' else ''}lev_{stem}_designer"
     value = str(record.get(key, "") or "").strip()
