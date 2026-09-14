@@ -6,7 +6,7 @@ from discord import app_commands
 from rasmai.bot.core import bot
 from rasmai.bot.ui.login import send_login_card
 from rasmai.bot.tasks.presence import describe
-from rasmai.bot.ui.views import LogoutView
+from rasmai.bot.ui.views import DeleteAccountView
 from rasmai.config import DISCORD_BOT_INVITE, MAIMAI_BASE_URLS, get_public_base_url
 from rasmai.storage.db import get_connected_account
 from rasmai.bot.commands.choices import REGION_CHOICES
@@ -61,7 +61,7 @@ async def help_command(interaction: discord.Interaction):
             "**`/compare`** - your scores against a player who opted in\n"
             "**`/leaderboard`** - opted-in players in this server\n"
             "**`/settings`** - defaults, a daily read that keeps your history complete, and who can see you\n"
-            "**`/export`** - your scores as JSON or CSV · **`/logout`** - disconnect"
+            "**`/export`** - your scores as JSON or CSV · **`/delete-account`** - delete everything stored about you"
         ),
         inline=False,
     )
@@ -128,13 +128,14 @@ async def invite(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 
-@bot.tree.command(name="logout", description="Disconnect your maimai account from this bot")
-async def logout(interaction: discord.Interaction):
+@bot.tree.command(name="delete-account", description="Delete your maimai account and everything stored about it")
+async def delete_account(interaction: discord.Interaction):
     account = get_connected_account(str(interaction.user.id))
     if not account:
-        await interaction.response.send_message("There is no connected account to remove.", ephemeral=True)
+        await interaction.response.send_message("There is no linked account to delete.", ephemeral=True)
         return
     await interaction.response.send_message(
-        "Disconnect your maimai account? This deletes the stored session, profile, history and play-count cache.",
-        view=LogoutView(interaction.user.id), ephemeral=True,
+        "Delete your maimai account? This removes the stored session, your profile, scores, play history, "
+        "judgement pages, areas and settings. It cannot be undone.",
+        view=DeleteAccountView(interaction.user.id), ephemeral=True,
     )

@@ -1,3 +1,4 @@
+import { env } from "@/lib/env";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -30,9 +31,26 @@ const mono = localFont({
   display: "swap",
 });
 
+const SITE = env.publicUrl();
+const TAGLINE =
+  "Rasmai reads your maimai DX NET scores and tells you which charts to play next for the most rating, with the odds on each.";
+
 export const metadata: Metadata = {
-  title: "Rasmai",
-  description: "Link your maimai DX account to Rasmai and get rating recommendations in Discord.",
+  // every page's canonical is resolved against this, so one address is the address
+  metadataBase: new URL(SITE),
+  title: { default: "Rasmai · know what to play next", template: "%s · Rasmai" },
+  description: TAGLINE,
+  alternates: { canonical: "/" },
+  keywords: ["maimai", "maimai DX", "rating", "best 50", "Discord bot", "chart constant", "rhythm game"],
+  openGraph: {
+    type: "website",
+    siteName: "Rasmai",
+    url: SITE,
+    title: "Rasmai · know what to play next",
+    description: TAGLINE,
+    locale: "en",
+  },
+  twitter: { card: "summary_large_image", title: "Rasmai · know what to play next", description: TAGLINE },
   applicationName: "Rasmai",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Rasmai", statusBarStyle: "default" },

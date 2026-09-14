@@ -281,6 +281,8 @@ def delete_connected_account(user_id: str) -> bool:
             connection.execute("DELETE FROM login_codes WHERE user_id = ?", (user_id,))
             connection.execute("DELETE FROM rating_history WHERE user_id = ?", (user_id,))
             connection.execute("DELETE FROM user_settings WHERE user_id = ?", (user_id,))
+            connection.execute("DELETE FROM play_judgements WHERE user_id = ?", (user_id,))
+            connection.execute("DELETE FROM notify_state WHERE user_id = ?", (user_id,))
         return cursor.rowcount > 0
     finally:
         connection.close()

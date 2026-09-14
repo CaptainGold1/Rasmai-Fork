@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { MastheadNav } from "@/components/Shell";
 import { ThemeToggle } from "@/components/Theme";
 import { ServersNotice } from "@/components/Servers";
@@ -83,8 +84,33 @@ const SAMPLE = [
   { tier: "master", label: "MASTER 13+", title: "Imitation:Loud Lounge", from: "97.94", to: "99.00", ranks: "S → SS", odds: "26%", gain: "+9" },
 ];
 
+export const metadata: Metadata = {
+  title: "Know what to play next",
+  description: "Rasmai reads your maimai DX NET scores and tells you which charts to play next for the most rating, with the odds on each.",
+  alternates: { canonical: "/" },
+  openGraph: { title: "Know what to play next · Rasmai", description: "Rasmai reads your maimai DX NET scores and tells you which charts to play next for the most rating, with the odds on each.", url: "/" , images: ["/opengraph-image"] },
+};
+
+// what the site is, in the shape search engines read. Only facts that are on the page anyway.
+const STRUCTURED = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Rasmai",
+  applicationCategory: "GameApplication",
+  applicationSubCategory: "Discord bot",
+  operatingSystem: "Any",
+  url: "https://rasmai.nguyen.ink/",
+  description:
+    "Rasmai reads your maimai DX NET scores and tells you which charts to play next for the most rating, with the odds on each.",
+  isAccessibleForFree: true,
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  author: { "@type": "Person", name: "nek_ng" },
+};
+
 export default function LandingPage() {
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED) }} />
     <div className="frame landing">
       <header className="masthead">
         <Ring lit={0} size={34} />
@@ -183,7 +209,7 @@ export default function LandingPage() {
           <p>
             Run <code>/login</code> in Discord and follow the link. You sign in at my-aime.net, open the Aime authentication, then press a
             bookmark once. The
-            bot only ever sees the session it needs to read your scores, never your password, and <code>/logout</code> deletes
+            bot only ever sees the session it needs to read your scores, never your password, and <code>/delete-account</code> deletes
             everything it holds about you.
           </p>
           <a className="button" href="/link/">
@@ -227,5 +253,6 @@ export default function LandingPage() {
         </span> */}
       </footer>
     </div>
+    </>
   );
 }

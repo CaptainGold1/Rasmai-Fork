@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import { Shell } from "@/components/Shell";
 import { Walkthrough } from "@/components/Walkthrough";
+
+export const metadata: Metadata = {
+  title: "Link your maimai account",
+  description: "Connect maimai DX NET to Rasmai in about a minute, on a computer or an iPhone, with the whole thing on video.",
+  alternates: { canonical: "/link/" },
+  openGraph: { title: "Link your maimai account · Rasmai", description: "Connect maimai DX NET to Rasmai in about a minute, on a computer or an iPhone, with the whole thing on video.", url: "/link/" , images: ["/opengraph-image"] },
+};
 
 export default function LinkPage() {
   return (

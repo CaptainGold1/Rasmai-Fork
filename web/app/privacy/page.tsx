@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { Contact, Doc, SITE_URL } from "@/components/Doc";
 
-export const metadata: Metadata = { title: "Privacy · Rasmai" };
+export const metadata: Metadata = {
+  title: "Privacy",
+  description: "What Rasmai stores about you, why, and how to delete all of it.",
+  alternates: { canonical: "/privacy/" },
+  openGraph: { title: "Privacy · Rasmai", description: "What Rasmai stores about you, why, and how to delete all of it.", url: "/privacy/", images: ["/opengraph-image"] },
+};
 
 export default function PrivacyPage() {
   return (
@@ -135,7 +140,7 @@ export default function PrivacyPage() {
       </p>
       <ul>
         <li>
-          <b>Yourself, at once.</b> Run <code>/logout</code> in Discord, or press <b>unlink</b> on the dashboard&apos;s Account
+          <b>Yourself, at once.</b> Run <code>/delete-account</code> in Discord, or press <b>unlink</b> on the dashboard&apos;s Account
           tab. Either deletes your session key, profile, stored scores, play history, rating readings, settings, play-count
           cache and any login codes immediately. Your dashboard sign-in cookie stays until you sign out or it expires; it holds
           nothing but your Discord ID and name.

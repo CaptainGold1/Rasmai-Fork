@@ -315,7 +315,7 @@ def build_login_done_embed(name: str, region: str) -> discord.Embed:
         color=discord.Color.from_rgb(75, 184, 95),
     )
     embed.add_field(name="Next", value="`/analyze` for what to play, `/plan` for the route to your next thousand, `/chart` to look anything up.", inline=False)
-    embed.set_footer(text="Your password never reached the bot; /logout removes the session at any time")
+    embed.set_footer(text="Your password never reached the bot; /delete-account removes everything at any time")
     return embed
 
 

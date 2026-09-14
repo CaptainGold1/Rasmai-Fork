@@ -169,7 +169,7 @@ class LoginView(OwnerOnlyView):
             )
 
 
-class LogoutView(OwnerOnlyView):
+class DeleteAccountView(OwnerOnlyView):
     def __init__(self, owner_id: int):
         super().__init__(owner_id, timeout=120)
 
@@ -178,7 +178,7 @@ class LogoutView(OwnerOnlyView):
             item.disabled = True
         if self.message:
             try:
-                await self.message.edit(content="Nothing changed. Run `/logout` again if you still want to disconnect.", view=self)
+                await self.message.edit(content="Nothing changed. Run `/delete-account` again if you still want to.", view=self)
             except discord.HTTPException:
                 pass
 

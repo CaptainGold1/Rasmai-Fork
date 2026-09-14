@@ -46,5 +46,5 @@ from rasmai.bot.commands.account import (  # noqa: F401
     login,
     ping,
     invite,
-    logout,
+    delete_account,
 )

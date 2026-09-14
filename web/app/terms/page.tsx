@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { Contact, Doc } from "@/components/Doc";
 
-export const metadata: Metadata = { title: "Terms · Rasmai" };
+export const metadata: Metadata = {
+  title: "Terms",
+  description: "The deal, in plain words: what Rasmai is, what you agree to, and what it does not promise.",
+  alternates: { canonical: "/terms/" },
+  openGraph: { title: "Terms · Rasmai", description: "The deal, in plain words: what Rasmai is, what you agree to, and what it does not promise.", url: "/terms/", images: ["/opengraph-image"] },
+};
 
 export default function TermsPage() {
   return (
@@ -37,7 +42,7 @@ export default function TermsPage() {
           Discord account.
         </li>
         <li>
-          You can unlink at any time with <code>/logout</code>, which deletes what the bot holds about you. See the{" "}
+          You can delete your account at any time with <code>/delete-account</code>, which removes what the bot holds about you. See the{" "}
           <a href="/privacy/">privacy page</a> for exactly what that is.
         </li>
       </ul>
@@ -68,7 +73,7 @@ export default function TermsPage() {
 
       <h2>Ending things</h2>
       <p>
-        You can stop using Rasmai whenever you like; <code>/logout</code> removes your data. The operator may remove linked
+        You can stop using Rasmai whenever you like; <code>/delete-account</code> removes your data. The operator may remove linked
         accounts or restrict access, for example in response to abuse, without notice.
       </p>
 
