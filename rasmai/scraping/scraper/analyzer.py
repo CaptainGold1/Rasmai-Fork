@@ -38,6 +38,7 @@ class MaimaiRatingAnalyzer(ScorePages, AreaPages, PlaylogPages, ProfilePages):
         self.plan: Optional[analysis.Plan] = None
         self.play_counts: Dict[Tuple[str, str, str], int] = {}
         self.recorded_plays: List[Dict[str, Any]] = []     # stored plays with the best held before each, for calibration
+        self.judgements: List[Dict[str, Any]] = []        # stored judgement pages, for the note-type traits
         self.events_data: Dict[str, Any] = {"areaEvents": [], "eventAreaEvents": []}   # the map pages, as last read
         self.events_read_at: Optional[datetime] = None
         self.plan_stretch: bool = False
@@ -141,7 +142,7 @@ class MaimaiRatingAnalyzer(ScorePages, AreaPages, PlaylogPages, ProfilePages):
 
         self.play_profile = analysis.build_play_profile(
             self.songs, self.recent_songs, chart_index, self.current_version,
-            play_counts=self.play_counts, recorded_plays=self.recorded_plays,
+            play_counts=self.play_counts, recorded_plays=self.recorded_plays, judgements=self.judgements,
         )
         self.best50 = analysis.build_best50(self.songs)
 

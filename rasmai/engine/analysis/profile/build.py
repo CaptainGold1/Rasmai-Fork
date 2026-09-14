@@ -14,6 +14,7 @@ def build_play_profile(
     current_version: int,
     play_counts: Optional[Dict[Tuple[str, str, str], int]] = None,
     recorded_plays: Optional[Sequence[Dict[str, Any]]] = None,
+    judgements: Optional[Sequence[Dict[str, Any]]] = None,
 ) -> PlayProfile:
     profile = PlayProfile()
     if play_counts:
@@ -147,6 +148,12 @@ def build_play_profile(
     if recorded_plays:
         insights.apply_calibration(profile, insights.calibrate(profile, recorded_plays, chart_index))
     profile.trait_axes = insights.trait_residuals(scored, chart_index, profile, recorded_plays)
+    if judgements:
+        # the judgement pages measure the same thing from the other side: not which charts cost points
+        # but which notes did. Both are offsets against the player's own middle, so they share a list.
+        from rasmai.engine.judgements import judgement_traits
+        profile.trait_axes = sorted(profile.trait_axes + judgement_traits(judgements),
+                                    key=lambda trait: trait["offset"])
     profile.traits = insights.notable(profile.trait_axes)
 
     return profile

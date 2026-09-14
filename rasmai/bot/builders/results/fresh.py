@@ -12,7 +12,9 @@ from rasmai.bot.ui.progress import Progress
 from rasmai.bot.state.snapshots import collect_judgements, persist_progress
 from rasmai.scraping.scraper import SessionRejected, MaimaiRatingAnalyzer
 from rasmai.config import DEBUG_EXPORT_JSON, DEBUG_MODE, MAIMAI_BASE_URLS
-from rasmai.storage.db import get_connected_account, load_play_counts, load_recorded_plays, save_play_counts
+from rasmai.storage.db import (
+    get_connected_account, load_judgements, load_play_counts, load_recorded_plays, save_play_counts,
+)
 from rasmai.storage.models import Recommendation
 from rasmai.util import export_debug_payload
 from rasmai.bot.builders.results.stored import _analysis_from_store, _snapshot_time, _stale_analysis, _stored_analysis, downtime_note
@@ -71,6 +73,7 @@ async def run_full_analysis(
     analyzer.events_data = snapshot.get("eventsData") or {"areaEvents": [], "eventAreaEvents": []}
     analyzer.play_counts = load_play_counts(user_id, latest_play_times(analyzer))
     analyzer.recorded_plays = load_recorded_plays(user_id)
+    analyzer.judgements = load_judgements(user_id)
     recommendations, value_charts = await asyncio.to_thread(analyzer.generate_recommendations)
     if await asyncio.to_thread(resolve_unknown, analyzer, tell):
         recommendations, value_charts = await asyncio.to_thread(analyzer.generate_recommendations)

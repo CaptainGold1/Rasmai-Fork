@@ -53,3 +53,65 @@ def judgement_profile(rows: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         "fast": fast, "late": late, "lateShare": round(late / hits, 3) if hits else None,
         "lostPerPlay": round(all_lost / len(rows), 3),
     }
+
+
+JUDGEMENT_LEAN_PLAYS = 10     # plays before a note type is worth mentioning as a lean
+JUDGEMENT_CONFIRM_PLAYS = 25  # plays before it is stated as measured
+JUDGEMENT_MIN_NOTES = 200     # notes of that type before its rate means anything
+JUDGEMENT_OFFSET = 0.5        # points a play a type has to cost beyond the player's own rate to be stated
+JUDGEMENT_LEAN_OFFSET = 0.3   # and this much to be worth showing as a lean
+
+
+def judgement_traits(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Each note type as a trait: the points per play it costs against the player's own average rate.
+
+    A note is not worth the same as its neighbours, so comparing a type's share of the loss with its
+    share of the notes would call every player weak at breaks. This compares what a type cost with
+    what was at stake on it, against the rate the player loses at overall, which makes the offsets
+    sum to zero the way the chart traits do: a negative one is where the points actually go.
+
+    :param rows: The stored judgement pages.
+    :type rows: List[Dict[str, Any]]
+    :returns: Trait rows shaped like the chart ones, so both lists read the same.
+    :rtype: List[Dict[str, Any]]
+    """
+    if len(rows) < JUDGEMENT_LEAN_PLAYS:
+        return []
+    notes = {k: 0 for k in KINDS}
+    stake = {k: 0.0 for k in KINDS}      # achievement the type was worth, so the rates are comparable
+    lost = {k: 0.0 for k in KINDS}
+    plays = 0
+    for row in rows:
+        counts = row.get("notes") or {}
+        weighted = sum(WEIGHTS[k] * sum(int(v) for v in (counts.get(k) or {}).values()) for k in KINDS)
+        if weighted <= 0:
+            continue
+        plays += 1
+        for kind in KINDS:
+            held = sum(int(v) for v in (counts.get(kind) or {}).values())
+            notes[kind] += held
+            stake[kind] += 100.0 * WEIGHTS[kind] * held / weighted
+        stake["break"] += 1.0            # the bonus rides on the breaks, so it is at stake there
+        for kind, value in note_losses(counts, float(row.get("achievement") or 0)).items():
+            lost[kind] += value
+    total_stake = sum(stake.values())
+    if not plays or total_stake <= 0:
+        return []
+    overall = sum(lost.values()) / total_stake
+    out: List[Dict[str, Any]] = []
+    for kind in KINDS:
+        if notes[kind] < JUDGEMENT_MIN_NOTES or stake[kind] <= 0:
+            continue
+        # what the type costs per play beyond the player's own rate; negative is where points go
+        offset = round(-(lost[kind] / stake[kind] - overall) * stake[kind] / plays, 2)
+        out.append({
+            "dimension": "judgement", "label": f"{kind} notes", "offset": offset, "count": plays, "plays": plays,
+            "notes": notes[kind], "perPlay": round(lost[kind] / plays, 3), "p": 0.0,
+            "verified": bool(plays >= JUDGEMENT_CONFIRM_PLAYS and abs(offset) >= JUDGEMENT_OFFSET),
+            # anything short of stating it outright but still off the player's own rate is a lean,
+            # whether it fell short on plays or on size; more plays must never hide a real gap
+            "leaning": bool(abs(offset) >= JUDGEMENT_LEAN_OFFSET) and not (
+                plays >= JUDGEMENT_CONFIRM_PLAYS and abs(offset) >= JUDGEMENT_OFFSET),
+        })
+    out.sort(key=lambda trait: trait["offset"])
+    return out

@@ -9,7 +9,9 @@ from rasmai.bot.tasks.chart_db import resolve_unknown
 from rasmai.config import MAIMAI_BASE_URLS, MAX_CONCURRENT_SCRAPES
 from rasmai.scraping.scraper import MaimaiRatingAnalyzer, SessionRejected
 from rasmai.security import public_reason
-from rasmai.storage.db import load_play_counts, load_recorded_plays, mark_session_expired, save_play_counts
+from rasmai.storage.db import (
+    load_judgements, load_play_counts, load_recorded_plays, mark_session_expired, save_play_counts,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +60,7 @@ class RefreshJobs:
                 analyzer.recent_songs = snapshot.get("recentSongsData", [])
                 analyzer.play_counts = load_play_counts(user_id)
                 analyzer.recorded_plays = load_recorded_plays(user_id)
+                analyzer.judgements = load_judgements(user_id)
                 tell("analysis", 0, 1)
                 recommendations, value_charts = analyzer.generate_recommendations()
                 if resolve_unknown(analyzer, tell):

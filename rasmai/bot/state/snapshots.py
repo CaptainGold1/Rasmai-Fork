@@ -3,7 +3,8 @@ from typing import Dict, List, Optional, Tuple, Any
 import logging
 
 from rasmai.storage.db import (
-    best_recorded_scores, record_area_progress, record_chart_scores, record_rating_point, update_account_snapshot,
+    best_recorded_scores, load_judgements, record_area_progress, record_chart_scores, record_rating_point,
+    update_account_snapshot,
 )
 from rasmai.util import _json_safe
 
@@ -253,6 +254,7 @@ def analyzer_from_snapshot(user_id: str, account: Dict[str, Any]) -> Optional[An
     ]
     analyzer.play_counts = load_play_counts(user_id)
     analyzer.recorded_plays = load_recorded_plays(user_id)
+    analyzer.judgements = load_judgements(user_id)
     analyzer.recent_songs = list(snapshot.get("recentPlays") or snapshot.get("recent") or [])
     analyzer.events_data = snapshot.get("areas") or {"areaEvents": [], "eventAreaEvents": []}
     try:

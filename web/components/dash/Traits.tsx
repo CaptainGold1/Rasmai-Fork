@@ -216,7 +216,7 @@ export function Traits({ traits, axes, charts, practice, onOpen }: { traits: Tra
     return (
       <section className="ledger">
         <div className="ledger-head">
-          <Label info={`Your traits: what your charts share, a pattern, a note mix, a tempo band, an era, a designer, scored by how far your results sit from your own curve. ${gate}`}>how you play</Label>
+          <Label info={`Your traits: what your charts share, a pattern, a note mix, a tempo band, an era, a designer, scored by how far your results sit from your own curve. Once enough plays are stored, each note type joins them, measured from your judgement pages rather than inferred from scores. ${gate}`}>how you play</Label>
           <span className="mono hint">
             {all.length} groups measured · {charts} scored charts
           </span>
@@ -253,7 +253,7 @@ export function Traits({ traits, axes, charts, practice, onOpen }: { traits: Tra
     <>
       <section className="ledger">
         <div className="ledger-head">
-          <Label info={`Your traits: what your charts share, a pattern, a note mix, a tempo band, an era, a designer, scored by how far your results sit from your own curve. Every tag is fitted together over your bests and every recorded play, with play count and difficulty held fixed. ${gate} Patterns and note mixes come from maiノーツ.`}>how you play</Label>
+          <Label info={`Your traits: what your charts share, a pattern, a note mix, a tempo band, an era, a designer, scored by how far your results sit from your own curve. Once enough plays are stored, each note type joins them, measured from your judgement pages rather than inferred from scores. Every tag is fitted together over your bests and every recorded play, with play count and difficulty held fixed. ${gate} Patterns and note mixes come from maiノーツ.`}>how you play</Label>
           <span className="mono hint">
             {confirmed.length} confirmed · {leaning.length} leaning · {even.length} level with the rest · {charts} scored charts
           </span>
@@ -265,7 +265,7 @@ export function Traits({ traits, axes, charts, practice, onOpen }: { traits: Tra
           </div>
           <div>
             <div className="ledger-head">
-              <Label info="Traits where your scores sit below your own curve. The number is the gap in achievement points and the small figure is how many of your charts share the trait. Hover it for how rarely shuffled tags matched it.">where you lose points</Label>
+              <Label info="Traits where your scores sit below your own curve. The number is the gap in achievement points. The small figure counts the charts sharing the trait, or the plays behind it for a note type. Hover it for how rarely shuffled tags matched it.">where you lose points</Label>
             </div>
             <List items={weak} tone="down" empty="Nothing sits below your own average, confirmed or leaning." />
             <div className="ledger-head">

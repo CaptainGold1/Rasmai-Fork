@@ -15,7 +15,10 @@ PRACTICE_CHARTS = 3       # charts named for each
 
 
 def _lines(items: List[Dict[str, Any]]) -> str:
-    return _fit([f"`{float(t['offset']):+.2f}` **{t['label']}** · {t['count']} charts" + ("" if t.get("verified") else " · leaning") for t in items])
+    # a chart trait is counted in charts; a note type is counted in the plays its judgements came from
+    return _fit([f"`{float(t['offset']):+.2f}` **{english_label(str(t['label']))}** · {t['count']} "
+                 + ("plays" if t.get("dimension") == "judgement" else "charts")
+                 + ("" if t.get("verified") else " · leaning") for t in items])
 
 
 def _practice_lines(axis: Dict[str, Any], rows: List[Dict[str, Any]]) -> List[str]:
@@ -93,6 +96,8 @@ async def build_traits(cached: CachedAnalysis) -> Tuple[discord.Embed, List[disc
     if judged:
         embed.add_field(name="Judgements, measured", value=_judgement_lines(judged), inline=False)
     footer = "against your own curve · confirmed beats shuffled tags, leaning is a hint · tags via maiノーツ"
+    if any(t["dimension"] == "judgement" for t in shown):
+        footer += " · note types measured from your judgement pages"
     if judged:
         footer += f" · judgements from {judged['plays']} plays"
     embed.set_footer(text=footer)

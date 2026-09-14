@@ -452,6 +452,58 @@ def _losses():
     return problems
 
 
+@check("note types become traits measured against what was at stake on them")
+def _judgement_traits():
+    from rasmai.engine.judgements import JUDGEMENT_CONFIRM_PLAYS, judgement_traits
+    clean = {"tap": {"critical": 800, "perfect": 0, "great": 0, "good": 0, "miss": 0},
+             "break": {"critical": 40, "perfect": 0, "great": 0, "good": 0, "miss": 0}}
+
+    # 800 taps at one share and 40 breaks at five make 1000 shares, so a share is 0.1%: a dropped
+    # break costs five of them plus its slice of the 1% bonus, and a great keeps four fifths of a tap
+    BREAK_MISS, TAP_GREAT = 5 * 0.1 + 1.0 / 40, 0.1 / 5
+
+    def play(break_misses=0, tap_greats=0):
+        notes = {k: dict(v) for k, v in clean.items()}
+        notes["break"]["critical"] -= break_misses
+        notes["break"]["miss"] = break_misses
+        notes["tap"]["critical"] -= tap_greats
+        notes["tap"]["great"] = tap_greats
+        # the achievement has to be what those judgements actually cost, or note_losses charges
+        # the unexplained remainder to breaks and the test measures its own mistake
+        return {"notes": notes, "achievement": 101.0 - break_misses * BREAK_MISS - tap_greats * TAP_GREAT}
+
+    problems = []
+    if judgement_traits([play()] * 5):
+        problems.append("five plays is too few to name a note type, but traits came back")
+    # a player who only ever drops breaks: breaks must read negative and taps positive
+    rows = [play(break_misses=2) for _ in range(JUDGEMENT_CONFIRM_PLAYS)]
+    traits = {t["label"]: t for t in judgement_traits(rows)}
+    if set(traits) != {"tap notes", "break notes"}:
+        problems.append(f"expected a trait per note type, got {sorted(traits)}")
+        return problems
+    if traits["break notes"]["offset"] >= 0:
+        problems.append(f"breaks cost every point yet read {traits['break notes']['offset']:+.2f}")
+    if traits["tap notes"]["offset"] <= 0:
+        problems.append(f"taps were clean yet read {traits['tap notes']['offset']:+.2f}")
+    if not traits["break notes"]["verified"]:
+        problems.append("25 plays of dropped breaks should be stated, not left as a lean")
+    total = sum(t["offset"] for t in traits.values())
+    if abs(total) > 0.05:
+        problems.append(f"offsets should cancel against the player's own rate, they sum to {total:+.2f}")
+    # a break is worth five taps, so losing proportionally to the stake is not a weakness
+    even = judgement_traits([play(break_misses=1, tap_greats=100) for _ in range(JUDGEMENT_CONFIRM_PLAYS)])
+    if any(t["verified"] or t["leaning"] for t in even):
+        problems.append(f"loss spread across the stake should name nobody: {[(t['label'], t['offset']) for t in even]}")
+    # a gap too small to state is still a lean; plenty of plays must not make it vanish instead
+    small = judgement_traits([play(break_misses=1) for _ in range(JUDGEMENT_CONFIRM_PLAYS * 2)])
+    breaks = next(t for t in small if t["label"] == "break notes")
+    if not 0.3 <= abs(breaks["offset"]) < 0.5:
+        problems.append(f"expected a gap between the lean and stated bars to test with, got {breaks['offset']:+.2f}")
+    elif not breaks["leaning"] or breaks["verified"]:
+        problems.append(f"{breaks['offset']:+.2f} over {breaks['count']} plays should lean, not disappear")
+    return problems
+
+
 @check("the judgement profile names the note type carrying more than its share of the loss")
 def _judgements():
     from rasmai.engine.judgements import judgement_profile
