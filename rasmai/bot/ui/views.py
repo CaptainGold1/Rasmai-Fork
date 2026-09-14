@@ -1,4 +1,5 @@
 from typing import Any, Awaitable, Callable, Optional
+import asyncio
 import logging
 import discord
 
@@ -114,16 +115,26 @@ class LoginView(OwnerOnlyView):
         :rtype: Callable
         """
         async def callback(interaction: discord.Interaction) -> None:
+            # a couple of megabytes take longer to upload than the three seconds Discord allows for a
+            # first response, so acknowledge the press before going anywhere near the file
+            await interaction.response.defer(ephemeral=True, thinking=True)
             path = WALKTHROUGH_DIR / f"{clip}.mp4"
             wording = "on a computer" if clip == "desktop" else "on an iPhone, in Safari"
             if not path.is_file():
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"The recording is not on this server. The same walkthrough is at {get_public_base_url()}/link/",
                     ephemeral=True)
                 return
-            await interaction.response.send_message(
-                f"Linking {wording}, start to finish. No sound, about a minute.",
-                file=discord.File(str(path), filename=f"rasmai-linking-{clip}.mp4"), ephemeral=True)
+            try:
+                await interaction.followup.send(
+                    f"Linking {wording}, start to finish. No sound, about a minute.",
+                    file=await asyncio.to_thread(discord.File, str(path), f"rasmai-linking-{clip}.mp4"),
+                    ephemeral=True)
+            except discord.HTTPException as error:
+                logger.info("walkthrough could not be sent: %s", error)
+                await interaction.followup.send(
+                    f"That would not upload here. The same walkthrough is at {get_public_base_url()}/link/",
+                    ephemeral=True)
         return callback
 
     async def on_timeout(self) -> None:

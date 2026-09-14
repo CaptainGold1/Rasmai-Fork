@@ -4,6 +4,9 @@ import { useState } from "react";
 
 type Platform = "desktop" | "ios";
 
+// bump when a recording is replaced: browsers hold on to a video far longer than a page
+const CUT = 2;
+
 const CLIPS: Record<Platform, { label: string; src: string; poster: string; note: string; chrome: string; w: number; h: number }> = {
   desktop: {
     label: "On a computer",
@@ -32,8 +35,8 @@ export function Walkthrough() {
   const video = (
     <video
       key={clip.src}
-      src={clip.src}
-      poster={clip.poster}
+      src={`${clip.src}?v=${CUT}`}
+      poster={`${clip.poster}?v=${CUT}`}
       width={clip.w}
       height={clip.h}
       controls

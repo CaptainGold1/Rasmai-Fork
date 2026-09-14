@@ -452,6 +452,31 @@ def _losses():
     return problems
 
 
+@check("the linking walkthroughs are web sized and small enough for Discord")
+def _walkthrough():
+    from rasmai.config import WALKTHROUGH_DIR
+    # a master dropped in by mistake is both a slow page and an upload Discord refuses
+    DISCORD_LIMIT = 8 * 1024 * 1024
+    SENSIBLE = 6 * 1024 * 1024
+    problems = []
+    for clip in ("desktop", "ios-safari"):
+        video = WALKTHROUGH_DIR / f"{clip}.mp4"
+        poster = WALKTHROUGH_DIR / f"{clip}.jpg"
+        if not video.is_file():
+            problems.append(f"{video} is missing, so the /login button has nothing to send")
+            continue
+        size = video.stat().st_size
+        if size > DISCORD_LIMIT:
+            problems.append(f"{clip}.mp4 is {size / 1048576:.1f} MB, over Discord's {DISCORD_LIMIT / 1048576:.0f} MB limit")
+        elif size > SENSIBLE:
+            problems.append(f"{clip}.mp4 is {size / 1048576:.1f} MB; transcode it before shipping")
+        if not poster.is_file():
+            problems.append(f"{poster.name} is missing, so the video box collapses before it loads")
+        elif poster.stat().st_mtime < video.stat().st_mtime - 60:
+            problems.append(f"{poster.name} is older than {clip}.mp4: the poster is from a previous cut")
+    return problems
+
+
 @check("the developer page answers one account and 404s for everyone else")
 def _admin():
     from rasmai.config import ADMIN_USER_ID
