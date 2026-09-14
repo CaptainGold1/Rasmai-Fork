@@ -9,6 +9,41 @@ function constNote(chart: { history: { when: string; constant: number }[]; const
   return Math.abs(first.constant - chart.constant) >= 0.05 ? ` · const ${first.constant.toFixed(1)} when first recorded` : "";
 }
 
+const NOTE_KINDS = ["tap", "hold", "slide", "touch", "break"] as const;
+
+/** A chart's day of arrival, read as a plain date rather than a moment, so no timezone moves it. */
+function arrived(iso: string): string {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** What the chart is made of, as one band: the share of each note type, with the counts beneath it. */
+function NoteMix({ split }: { split: Record<string, number> | null }) {
+  if (!split) return null;
+  const parts = NOTE_KINDS.map((kind) => [kind, split[kind] ?? 0] as const).filter(([, n]) => n > 0);
+  const total = parts.reduce((sum, [, n]) => sum + n, 0);
+  if (!total) return null;
+  const share = (n: number) => (100 * n) / total;
+  return (
+    <div className="note-mix">
+      <div className="note-bar" role="img" aria-label={parts.map(([kind, n]) => `${n} ${kind}`).join(", ")}>
+        {parts.map(([kind, n]) => (
+          <span key={kind} className={`nm-${kind}`} style={{ width: `${share(n)}%` }} title={`${num(n)} ${kind} · ${Math.round(share(n))}%`} />
+        ))}
+      </div>
+      <p className="note-legend mono">
+        {parts.map(([kind, n]) => (
+          <span key={kind}>
+            <i className={`nm-${kind}`} aria-hidden="true" />
+            {num(n)} {kind}
+          </span>
+        ))}
+      </p>
+    </div>
+  );
+}
+
 const TIER: Record<string, string> = { basic: "Basic", advanced: "Advanced", expert: "Expert", master: "Master", remaster: "Re:Master" };
 
 export const RANK_LINES: [string, number][] = [["S", 97], ["S+", 98], ["SS", 99], ["SS+", 99.5], ["SSS", 100], ["SSS+", 100.5]];
@@ -51,18 +86,12 @@ export function Detail({ song, chart, selected, onSelect, onTrait }: { song: Son
       <p className="hint chart-meta">
         {TIER[chart.difficulty] ?? chart.difficulty} {chart.level} · constant {chart.constant.toFixed(1)}
         {chart.notes ? ` · ${num(chart.notes)} notes` : ""}
-        {chart.designer ? ` · ${chart.designer}` : ""}
-        {!chart.intl ? " · not on the international version" : ""}
-        {chart.deleted ? " · removed from the game" : ""}
+        {chart.designer ? ` · charted by ${chart.designer}` : ""}
+        {chart.released ? ` · added ${arrived(chart.released)}` : ""}
+        {!chart.intl && <span className="chart-flag">Japan only</span>}
+        {chart.deleted && <span className="chart-flag">removed from the game</span>}
       </p>
-      {chart.noteSplit && (
-        <p className="hint chart-meta mono">
-          {Object.entries(chart.noteSplit)
-            .filter(([, n]) => n > 0)
-            .map(([name, n]) => `${num(n)} ${name}`)
-            .join(" · ")}
-        </p>
-      )}
+      <NoteMix split={chart.noteSplit} />
       {chart.patterns.length > 0 && (
         <>
           <ul className="patterns">

@@ -159,6 +159,7 @@ def chart_payload(cached: Optional[CachedAnalysis], title: str, chart_type: str 
         item: Dict[str, Any] = dict(row)
         item.update({
             "title": ref.title, "notes": ref.notes, "version": ref.version, "intl": ref.intl, "deleted": ref.deleted,
+            "released": ref.released,
             "designer": chart_designer(record, ref), "is_new": bool(current_version) and ref.version == current_version,
             "usual": profile.expected_for(ref.constant, ref.difficulty) if profile and profile.sample_size else None,
             "prediction": None, "ladder": [], "history": [],

@@ -31,6 +31,9 @@ def distil(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     The aliases are the community's short names ("lk" for Latent Kingdom). The constants are kept per
     version because they get revised, and a play from last year scored against last year's number.
+    Each chart also keeps what otoge-db is thin on: who wrote it, whether the international version
+    has it, its note split and the day it arrived. The keys are one letter because the table is
+    every chart in the game and it is stored as one row.
 
     :param payload: The data to store or send.
     :type payload: Dict[str, Any]
@@ -38,6 +41,7 @@ def distil(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     aliases: Dict[str, List[str]] = {}
     constants: Dict[str, Dict[str, float]] = {}
+    sheets: Dict[str, Dict[str, Any]] = {}
     for song in payload.get("songs") or []:
         title = str(song.get("title") or "")
         folded = loose_title(title)
@@ -47,15 +51,30 @@ def distil(payload: Dict[str, Any]) -> Dict[str, Any]:
         if names:
             aliases.setdefault(folded, []).extend(n for n in names if n not in aliases.get(folded, []))
         for sheet in song.get("sheets") or []:
-            history = sheet.get("multiverInternalLevelValue") or {}
             chart_type = str(sheet.get("type") or "")
-            if chart_type not in ("std", "dx") or len(set(history.values())) < 2:
-                continue      # only a chart whose constant actually moved is worth a row
+            if chart_type not in ("std", "dx"):
+                continue
             key = f"{folded}|{chart_type}|{sheet.get('difficulty')}"
-            constants[key] = {str(v): float(c) for v, c in history.items() if c}
+            history = sheet.get("multiverInternalLevelValue") or {}
+            if len(set(history.values())) > 1:
+                constants[key] = {str(v): float(c) for v, c in history.items() if c}      # only a chart whose constant moved
+            facts: Dict[str, Any] = {}
+            designer = str(sheet.get("noteDesigner") or "").strip()
+            if designer and designer != "-":
+                facts["d"] = designer
+            if not (sheet.get("regions") or {}).get("intl", True):
+                facts["i"] = 0      # available everywhere is the common case, so only absence is written down
+            counts = sheet.get("noteCounts") or {}
+            if counts.get("total"):
+                facts["n"] = [int(counts.get(field) or 0) for field in ("tap", "hold", "slide", "touch", "break")]
+            released = str(sheet.get("releaseDate") or "")
+            if released:
+                facts["r"] = released
+            if facts:
+                sheets[key] = facts
     versions = [(str(v.get("version") or ""), str(v.get("releaseDate") or ""))
                 for v in payload.get("versions") or [] if v.get("releaseDate")]
-    return {"aliases": aliases, "constants": constants, "versions": versions}
+    return {"aliases": aliases, "constants": constants, "versions": versions, "sheets": sheets}
 
 
 def fetch(etag: str = "") -> Tuple[str, Optional[Dict[str, Any]], str]:
@@ -138,6 +157,43 @@ def cached() -> Dict[str, Any]:
     data = _load(source_state_get(SOURCE) or {})
     _memo = (time.monotonic(), data)
     return data
+
+
+NOTE_FIELDS = ("t", "h", "s", "u", "b")      # tap, hold, slide, touch, break, the way mai-notes names them
+
+
+def chart_facts(title: str, chart_type: str, difficulty: str) -> Dict[str, Any]:
+    """What dxrating holds for one chart: ``d`` designer, ``i`` region, ``n`` note split, ``r`` release day.
+
+    :param title: The song title.
+    :type title: str
+    :param chart_type: ``"std"`` or ``"dx"``.
+    :type chart_type: str
+    :param difficulty: The difficulty tier, such as ``"master"``.
+    :type difficulty: str
+    :rtype: Dict[str, Any]
+    """
+    folded = loose_title(title)
+    return (cached().get("sheets") or {}).get(f"{folded}|{chart_type}|{difficulty}", {}) if folded else {}
+
+
+def note_split(title: str, chart_type: str, difficulty: str) -> Optional[Dict[str, int]]:
+    """A chart's notes by type, keyed the way mai-notes keys them, or None when dxrating has no count.
+
+    :param title: The song title.
+    :type title: str
+    :param chart_type: ``"std"`` or ``"dx"``.
+    :type chart_type: str
+    :param difficulty: The difficulty tier, such as ``"master"``.
+    :type difficulty: str
+    :rtype: Optional[Dict[str, int]]
+    """
+    counts = chart_facts(title, chart_type, difficulty).get("n")
+    if not counts or len(counts) != len(NOTE_FIELDS):
+        return None
+    row = {field: int(value) for field, value in zip(NOTE_FIELDS, counts)}
+    row["n"] = sum(row.values())
+    return row
 
 
 def aliases_for(title: str) -> List[str]:

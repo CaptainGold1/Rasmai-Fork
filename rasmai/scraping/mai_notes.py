@@ -212,7 +212,16 @@ class ChartFacts:
         if row is not None:
             return row
         folded = loose_title(str(title))
-        return self.loose.get(f"{folded}|{chart_type}|{difficulty}") if folded else None
+        row = self.loose.get(f"{folded}|{chart_type}|{difficulty}") if folded else None
+        if row is not None:
+            return row
+        # the editors have tagged about one chart in ten; dxrating counts the notes on all of them, so
+        # the note mix is known for the rest even where nobody has written a pattern tag for them
+        try:
+            from rasmai.scraping import dxdata
+            return dxdata.note_split(str(title), chart_type, difficulty)
+        except Exception:
+            return None
 
 
 _memo: Tuple[float, Optional[ChartFacts]] = (0.0, None)

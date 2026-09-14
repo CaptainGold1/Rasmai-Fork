@@ -181,7 +181,7 @@ dev.py          set up and run both halves
 
 - [tomomai](https://github.com/shedaniel/tomomai) by shedaniel, whose login flow is the one `/login` uses to link a maimai account.
 - [otoge-db](https://github.com/zvuc/otoge-db) by zvuc, the chart database every constant and jacket here comes from.
-- [dxrating](https://github.com/gekichumai/dxrating) by Gekichumai, for the community's song aliases in search and the constant each chart had in past versions.
+- [dxrating](https://github.com/gekichumai/dxrating) by Gekichumai, for the community's song aliases in search, the constant each chart had in past versions, who wrote each chart, which regions have it, and the note counts otoge-db and maiノーツ do not reach.
 - [maimai-score-details](https://github.com/SpiritsUnite/maimai-score-details) by SpiritsUnite, whose arithmetic says what each note type cost a play.
 - [maiノーツ](https://mai-notes.com), for the note mix and pattern tags.
 
