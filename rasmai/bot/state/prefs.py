@@ -9,7 +9,7 @@ DEFAULTS: Dict[str, Any] = {
     "compare": False,            # let other people run /compare against you
     "leaderboard": False,        # appear on server leaderboards
     "challenge": "balanced",     # how far above your usual scores targets sit
-    "history": False,            # read the recent-plays page once a day so no play is missed
+    "history": True,             # read the recent-plays page once a day so no play is missed
     "notify": False,             # DM what the daily read found: new bests and a moved rating
     # the public profile is off until asked for, and each section of it is opted into separately
     "public": False,             # a link anyone can open, with only the sections below on it

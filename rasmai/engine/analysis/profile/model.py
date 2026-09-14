@@ -340,6 +340,28 @@ class PlayProfile:
         value *= self.difficulty_bias.get(difficulty, 1.0)
         return value
 
+    def curve_points(self, step: float = 0.1) -> List[Dict[str, float]]:
+        """The fitted curve as points, from the easiest chart scored to the hardest that exists.
+
+        The dashboard draws this against the player's own scores, so what the model believes and
+        what they actually did can be read off one picture.
+
+        :param step: Constant between points.
+        :type step: float
+        :rtype: List[Dict[str, float]]
+        """
+        low = min((c for c, (_r, n, _b) in self.bucket_stats.items() if n), default=1.0)
+        high = max(self.chart_ceiling, self.played_ceiling or 0.0)
+        if high <= low:
+            return []
+        points = []
+        for tick in range(int(round(low * 10)), int(round(high * 10)) + 1, max(1, int(round(step * 10)))):
+            constant = tick / 10.0
+            points.append({"c": round(constant, 1),
+                           "e": round(self.expected_accuracy(constant), 3),
+                           "s": round(self.sigma_at(constant), 3)})
+        return points
+
     def summary(self) -> Dict[str, Any]:
         style = "balanced"
         if self.accuracy_focus >= 0.65:
@@ -356,6 +378,7 @@ class PlayProfile:
             "hardestS": round(self.hardest_s, 1),
             "consistency": round(self.consistency, 2),
             "expectedAt13": round(self.expected_accuracy(13.0), 2),
+            "curve": self.curve_points(),
             "expectedAt14": round(self.expected_accuracy(14.0), 2),
             "difficultyOffsets": {tier: round(value, 2) for tier, value in sorted(self.difficulty_offset.items())},
             "traits": list(self.traits),

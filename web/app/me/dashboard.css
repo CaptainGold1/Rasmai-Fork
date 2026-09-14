@@ -591,3 +591,24 @@ html[data-standalone] .dash .ident { margin-top: 16px; }
 .share-toggles b { display: block; font-size: 14px; font-weight: 600; }
 .share-toggles .dim { display: block; font-size: 12.5px; color: var(--muted); }
 .share-spark { display: block; width: 100%; height: 70px; margin-top: 14px; }
+
+/* the fitted curve, the spread around it, and every score behind both */
+.curve { display: block; width: 100%; height: auto; margin-top: 14px; overflow: visible; }
+.curve-grid { stroke: var(--line); stroke-width: 1; }
+.curve-axis { font-family: var(--font-mono), monospace; font-size: 10px; fill: var(--muted); }
+.curve-axis.dim { opacity: 0.7; }
+.curve-band { fill: color-mix(in srgb, var(--cyan) 16%, transparent); }
+.curve-line { fill: none; stroke: var(--cyan); stroke-width: 2.5; stroke-linejoin: round; }
+.curve-dot { fill: var(--ink-2); opacity: 0.42; }
+.curve-dot.d-master { fill: var(--pink-edge); }
+.curve-dot.d-remaster { fill: #8f7dff; }
+.curve-dot.d-expert { fill: #4fd18b; }
+.curve-mark { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.curve-mark.comfort { stroke: var(--gold-edge); }
+.curve-mark.reach { stroke: var(--pink-edge); }
+.curve-mark-label { font-family: var(--font-mono), monospace; font-size: 9px; letter-spacing: 0.6px; fill: var(--muted); text-transform: uppercase; }
+.curve-mark-label.comfort { fill: var(--gold-edge); }
+.curve-mark-label.reach { fill: var(--pink-edge); }
+:root[data-theme="dark"] .curve-mark.comfort, :root[data-theme="dark"] .curve-mark-label.comfort { stroke: var(--gold); fill: var(--gold); }
+:root[data-theme="dark"] .curve-mark.reach, :root[data-theme="dark"] .curve-mark-label.reach { stroke: var(--pink); fill: var(--pink); }
+:root[data-theme="dark"] .curve-dot { opacity: 0.5; }

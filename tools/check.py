@@ -463,8 +463,14 @@ def _public_profile():
         from rasmai.storage.db import get_connected_account, upsert_connected_account
         from rasmai.web.dashboard.public_profile import public_payload, set_sharing, sharing_payload
         problems = []
+        # the stored snapshot keeps rows against a field list, not dicts: building the profile from
+        # dict-shaped charts passed every test and crashed on every real account
+        from rasmai.bot.state.snapshots import CHART_FIELDS
+        rows = [[f"song {i}", "dx", "master", 100.2 - i * 0.01, 300 - i, "13+", 13.7, "FC", "", i < 20, 2900]
+                for i in range(60)]
         upsert_connected_account("u1", "intl", "cookie://x",
-                                 official_profile={"name": "Nek", "rating": 13551, "totalPlayCount": 574})
+                                 official_profile={"name": "Nek", "rating": 13551, "totalPlayCount": 574},
+                                 snapshot={"fields": list(CHART_FIELDS), "charts": rows, "recordedAt": "2026-09-14T04:00:00"})
         account = get_connected_account("u1")
 
         if sharing_payload("u1", account)["on"]:
@@ -486,6 +492,11 @@ def _public_profile():
                 problems.append(f"{name} was never turned on but is on the profile")
         if "best50" not in shown:
             problems.append("best50 was turned on but is missing")
+        elif len(shown["best50"]["new"]) != 15 or len(shown["best50"]["old"]) != 35:
+            problems.append(f"the pools did not fill from the stored rows: "
+                            f"{len(shown['best50']['new'])} new, {len(shown['best50']['old'])} old")
+        elif not shown["best50"]["new"][0]["title"]:
+            problems.append("the charts came back nameless: the snapshot rows were not read")
 
         # switching it off has to take effect at once, not at the next link
         account = get_connected_account("u1")

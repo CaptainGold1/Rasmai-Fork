@@ -160,7 +160,13 @@ class InternalApiServer:
                     if not login_attempt_allowed(self._client_key()):
                         self._send_json(429, {"ok": False, "error": "rate_limited"})
                         return
-                    shared = dashboard.public_payload(slug)
+                    try:
+                        shared = dashboard.public_payload(slug)
+                    except Exception:
+                        # a shared link is opened by people with no way to report a fault: answer, log, move on
+                        logger.exception("building a public profile failed")
+                        self._send_json(502, {"ok": False, "error": "unavailable"})
+                        return
                     if shared is None:
                         self._send_json(404, {"ok": False, "error": "not_found"})
                         return

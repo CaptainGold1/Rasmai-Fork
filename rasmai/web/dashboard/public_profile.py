@@ -3,6 +3,7 @@ import logging
 import secrets
 
 from rasmai.bot.state.prefs import PUBLIC_SECTIONS, get_prefs, update_prefs
+from rasmai.bot.state.snapshots import snapshot_charts
 from rasmai.config import get_public_base_url
 from rasmai.engine.analysis import rank_for
 from rasmai.storage.db import account_by_share_slug, load_play_history, load_rating_history, set_share_slug
@@ -95,7 +96,7 @@ def public_payload(slug: str) -> Optional[Dict[str, Any]]:
 
     profile = account.get("officialProfile") or {}
     snapshot = account.get("latestSnapshot") or {}
-    charts = list(snapshot.get("charts") or [])
+    charts = snapshot_charts(snapshot)
     shows = {name: bool(prefs.get(f"public_{name}")) for name in PUBLIC_SECTIONS}
     payload: Dict[str, Any] = {
         "name": str(profile.get("name") or "a maimai player"),

@@ -45,6 +45,7 @@ export type Overview = {
   analysis?: {
     profile?: {
       comfortConstant: number;
+      curve?: { c: number; e: number; s: number }[];
       reachConstant: number;
       hardestS: number;
       playedCeiling?: number;

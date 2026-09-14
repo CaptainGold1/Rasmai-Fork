@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { type ChartRow, type Overview } from "./api";
 import { Empty, Label, LoadError, num, pct } from "./bits";
+import { SkillCurve } from "./SkillCurve";
 import { Sparkline } from "./Sparkline";
 import { levelValue } from "./Best50";
 
@@ -33,6 +34,15 @@ export function OverviewTab({ me, charts, chartsError, onRetry }: { me: Overview
     <>
       <Sparkline points={me.history ?? []} />
       {chartsError ? <LoadError what="your charts" message={chartsError} onRetry={onRetry} /> : null}
+      {prof?.curve && prof.curve.length > 1 && (
+        <SkillCurve
+          curve={prof.curve}
+          charts={charts}
+          comfort={prof.comfortConstant}
+          reach={prof.reachConstant}
+          playedCeiling={prof.playedCeiling}
+        />
+      )}
       <div className="two-up">
         <section className="ledger">
           <div className="ledger-head">

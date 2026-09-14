@@ -7,6 +7,7 @@ import unicodedata
 import logging
 
 from rasmai.config import get_maimai_base_url
+from rasmai.scraping.scraper.session import SessionRejected
 from rasmai.engine.analysis import calculate_rating
 from rasmai.storage.models import SongInfo
 
@@ -42,6 +43,12 @@ class ScorePages:
         )
         if response.status_code != 200:
             location = response.headers.get("Location", "")
+            # maimai sends every dead session to the same error page part way through a read: signing
+            # in elsewhere ends this one. Naming it lets the command say what to do instead of showing a 302.
+            if "/maimai-mobile/error" in location:
+                raise SessionRejected(
+                    "maimai DX NET signed this session out part way through the read. That usually means the "
+                    "account was opened somewhere else. Run /login to link again.")
             suffix = f" -> {location}" if location else ""
             raise ValueError(f"Failed to fetch official page: HTTP {response.status_code}{suffix}")
         return response.text
