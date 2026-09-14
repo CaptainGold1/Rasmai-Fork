@@ -932,6 +932,132 @@ def _stale_session():
     return problems
 
 
+def _web_text():
+    """Every line of the site that could name an address on the bot."""
+    out = []
+    for root in (ROOT / "web" / "app", ROOT / "web" / "components", ROOT / "web" / "lib"):
+        for path in root.rglob("*.ts*"):
+            if "node_modules" in path.parts or ".next" in path.parts:
+                continue
+            out.append(path.read_text(encoding="utf-8"))
+    return chr(10).join(out)
+
+
+@check("the website and the bot agree on every address between them")
+def _seam_addresses():
+    import re
+    web = _web_text()
+    server = (ROOT / "rasmai" / "web" / "web_server.py").read_text(encoding="utf-8")
+    routes = (ROOT / "rasmai" / "web" / "dashboard" / "routes.py").read_text(encoding="utf-8")
+    problems = []
+
+    # the dashboard's own reads: the site asks /api/me/<name>, the bot answers /internal/me/<name>,
+    # and a rename on one side alone leaves a button that quietly answers 404
+    asked = set(re.findall(r"/api/me/([a-z-]+)", web))
+    answered = set(re.findall(r'"/internal/me/([a-z-]+)"', routes))
+    for name in sorted(asked - answered):
+        problems.append(f"the site calls /api/me/{name} and the bot serves no /internal/me/{name}")
+    for name in sorted(answered - asked):
+        problems.append(f"the bot serves /internal/me/{name} and nothing on the site asks for it")
+
+    # everything else the site proxies, against what the server dispatches, prefixes included
+    served = set(re.findall(r'(?:(?:route\.)?path == |startswith\()"(/internal/[a-z/-]*)"', server))
+    served |= {path.rstrip("/") for path in served}
+    for target in sorted(set(re.findall(r'internal\(\s*[`"](/internal/[a-z-]+)', web))):
+        if target == "/internal/me":
+            continue
+        if target not in served and target + "/" not in served:
+            problems.append(f"the site proxies {target} and the bot dispatches no such path")
+
+    # writes are allow-listed on both sides, and a list that drifts is a form that stops working
+    allowed = re.search(r"\[((?:\"[a-z]+\",?\s*)+)\]\.includes\(path\)", web)
+    posts = set(re.findall(r'"/internal/me/([a-z]+)"', routes[routes.index("def handle_post"):]))
+    if not allowed:
+        problems.append("the site no longer allow-lists which writes under /api/me it will forward")
+    else:
+        site_posts = set(re.findall(r'"([a-z]+)"', allowed.group(1)))
+        for name in sorted(site_posts - posts):
+            problems.append(f"the site forwards a write to /api/me/{name} that the bot does not accept")
+        for name in sorted(posts - site_posts):
+            problems.append(f"the bot accepts a write at /internal/me/{name} that the site will not forward")
+    return problems
+
+
+@check("the bot's side of the website answers, and refuses anyone without the shared secret")
+def _seam_live():
+    import json as jsonlib
+    import urllib.error
+    import urllib.request
+    from rasmai.config import ADMIN_USER_ID
+    from rasmai.web import web_server
+
+    kept = web_server.INTERNAL_API_SECRET
+    web_server.INTERNAL_API_SECRET = "check-only-secret"
+    server = web_server.InternalApiServer(host="127.0.0.1", port=0)
+    problems = []
+    try:
+        server.start()
+        port = server.httpd.server_address[1]
+
+        def ask(path, secret=True, user=None):
+            request = urllib.request.Request(f"http://127.0.0.1:{port}{path}")
+            if secret:
+                request.add_header("X-Rasmai-Internal", "check-only-secret")
+            if user is not None:
+                request.add_header("X-Rasmai-User", jsonlib.dumps(user))
+            try:
+                with urllib.request.urlopen(request, timeout=10) as answer:
+                    return answer.status, answer.read()
+            except urllib.error.HTTPError as error:
+                return error.code, error.read()
+
+        # the shared secret is the whole door: nothing behind it may answer without one
+        for path in ("/internal/notice", "/internal/servers", "/internal/me", "/internal/me/admin"):
+            status, _ = ask(path, secret=False)
+            if status != 401:
+                problems.append(f"{path} answered {status} with no shared secret, expected 401")
+
+        # the container's health check is deliberately in front of that door
+        status, _ = ask("/health", secret=False)
+        if status != 200:
+            problems.append(f"/health answered {status} without a secret; the container check reads it")
+
+        # the two the site polls for every visitor, signed in or not
+        for path in ("/internal/notice", "/internal/servers"):
+            status, body = ask(path)
+            if status != 200:
+                problems.append(f"{path} answered {status}, expected 200")
+                continue
+            try:
+                jsonlib.loads(body)
+            except ValueError:
+                problems.append(f"{path} did not answer with JSON")
+
+        # a dashboard read with nobody signed in is a refusal, never a stack trace
+        status, _ = ask("/internal/me/charts")
+        if status not in (401, 404):
+            problems.append(f"/internal/me/charts answered {status} with nobody signed in, expected a refusal")
+
+        # the developer page is one account's, and everyone else is told it does not exist
+        stranger = ("1" + ADMIN_USER_ID)[:19] if ADMIN_USER_ID.isdigit() else "100000000000000001"
+        status, _ = ask("/internal/me/admin", user={"id": stranger})
+        if status != 404:
+            problems.append(f"/internal/me/admin answered {status} to a stranger, expected 404")
+        # a user header that is not a Discord id is not a user, however well formed the JSON is
+        status, _ = ask("/internal/me/charts", user={"id": "1"})
+        if status != 401:
+            problems.append(f"a made-up user id was accepted: /internal/me/charts answered {status}")
+
+        for path in ("/internal/nothing-here", "/nope"):
+            status, _ = ask(path)
+            if status != 404:
+                problems.append(f"{path} answered {status}, expected 404")
+    finally:
+        server.stop()
+        web_server.INTERNAL_API_SECRET = kept
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:
