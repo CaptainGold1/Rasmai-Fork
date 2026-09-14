@@ -791,6 +791,63 @@ def _site_notice():
     return problems
 
 
+@check("a play page met with a session maimai has closed signs in again rather than failing")
+def _stale_session():
+    from rasmai.bot.builders.history.lastplay import play_detail
+    from rasmai.bot.state.cache import CachedAnalysis
+    from rasmai.scraping.scraper import SessionRejected
+    import rasmai.bot.builders.history.lastplay as lastplay
+
+    class Analyzer:
+        def __init__(self):
+            self._official_session = object()      # a session from an earlier read, since closed
+            self.recent_songs = []
+            self.signed_in = 0
+            self.reads = 0
+
+        def fetch_official_player_profile(self, token, region):
+            self.signed_in += 1
+            self._official_session = object()
+
+        def fetch_playlog_detail(self, idx, region):
+            self.reads += 1
+            if self.signed_in == 0:
+                raise SessionRejected("maimai signed this session out")
+            return {"notes": {}, "achievement": 99.0}
+
+    analyzer = Analyzer()
+    cached = CachedAnalysis(user_id="1", region="intl", analyzer=analyzer, recommendations=[], value_charts=[])   # type: ignore[arg-type]
+    account = {"token": "cookie://x"}
+    kept = lastplay.get_connected_account
+    lastplay.get_connected_account = lambda user_id: account
+    problems = []
+    try:
+        detail = play_detail(cached, "1,2")
+        if not detail:
+            problems.append("the retry returned nothing")
+        if analyzer.signed_in != 1:
+            problems.append(f"signed in {analyzer.signed_in} times, expected exactly one")
+        if analyzer.reads != 2:
+            problems.append(f"read the page {analyzer.reads} times, expected the failure and the retry")
+        analyzer.reads = 0
+        play_detail(cached, "1,2")
+        if analyzer.reads:
+            problems.append("the page was read again instead of being taken from the analysis")
+        # a token maimai will not accept is a dead end, not an endless retry
+        analyzer.signed_in = 0
+        analyzer.fetch_official_player_profile = lambda token, region: (_ for _ in ()).throw(SessionRejected("dead"))
+        try:
+            play_detail(cached, "3,4")
+            problems.append("a dead token should have raised")
+        except SessionRejected:
+            pass
+    except Exception as error:
+        problems.append(f"{type(error).__name__}: {error}")
+    finally:
+        lastplay.get_connected_account = kept
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:

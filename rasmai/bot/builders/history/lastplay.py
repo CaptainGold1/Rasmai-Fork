@@ -52,18 +52,15 @@ def play_detail(cached: CachedAnalysis, idx: str) -> Dict[str, Any]:
     if detail is None:
         a = cached.analyzer
         if getattr(a, "_official_session", None) is None:
-            # an analysis loaded from the stored copy has never signed in; the play page needs a session
-            account = get_connected_account(cached.user_id)
-            if not account or not account.get("token"):
-                raise ValueError("Not signed in")
-            try:
-                a.fetch_official_player_profile(str(account["token"]), cached.region)
-            except SessionRejected:
-                # for someone who only uses the website this is the first live read of the visit,
-                # so it is where a dead sign-in surfaces; flagging it here covers /lastplay too
-                mark_session_expired(cached.user_id)
-                raise
-        detail = a.fetch_playlog_detail(idx, cached.region)
+            _sign_in(cached)      # an analysis loaded from the stored copy has never signed in
+        try:
+            detail = a.fetch_playlog_detail(idx, cached.region)
+        except SessionRejected:
+            # maimai signs a session out when the account is opened elsewhere, and the one held in
+            # memory outlives the read that made it, so a button pressed later meets a dead session.
+            # One fresh sign-in costs a round trip and saves the player a /login they did not need.
+            _sign_in(cached)
+            detail = a.fetch_playlog_detail(idx, cached.region)
         cached.extras[slot] = detail
         record = next((r for r in a.recent_songs or [] if str(r.get("idx", "")) == idx), None)
         if record:
@@ -74,6 +71,24 @@ def play_detail(cached: CachedAnalysis, idx: str) -> Dict[str, Any]:
             except Exception:
                 logger.exception("Could not store a judgement page")
     return detail
+
+
+def _sign_in(cached: CachedAnalysis) -> None:
+    """Give the analysis a live maimai session from the stored token, and say so when the token is dead.
+
+    :param cached: The player's analysis, held in memory.
+    :type cached: CachedAnalysis
+    """
+    account = get_connected_account(cached.user_id)
+    if not account or not account.get("token"):
+        raise ValueError("Not signed in")
+    try:
+        cached.analyzer.fetch_official_player_profile(str(account["token"]), cached.region)
+    except SessionRejected:
+        # for someone who only uses the website this is the first live read of the visit,
+        # so it is where a dead sign-in surfaces; flagging it here covers /lastplay too
+        mark_session_expired(cached.user_id)
+        raise
 
 
 async def build_lastplay(cached: CachedAnalysis, owner_id: int, position: int) -> Tuple[discord.Embed, List[discord.File], Optional[discord.ui.View]]:
