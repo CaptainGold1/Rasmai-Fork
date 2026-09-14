@@ -61,6 +61,8 @@ RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
 
 COPY rasmai/ ./rasmai/
 COPY brand/emoji/png/ ./brand/emoji/png/
+# the linking walkthroughs, so /login can play one in Discord rather than sending people away
+COPY web/public/walkthrough/ ./walkthrough/
 
 VOLUME ["/app/data", "/app/otoge_cache"]
 EXPOSE 8765

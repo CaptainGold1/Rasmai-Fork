@@ -1,4 +1,5 @@
 import { Shell } from "@/components/Shell";
+import { Walkthrough } from "@/components/Walkthrough";
 
 export default function LinkPage() {
   return (
@@ -10,6 +11,17 @@ export default function LinkPage() {
         Once linked, the bot reads your scores and tells you which charts to grind for the most rating, picked for how
         you actually play.
       </p>
+
+      <section className="step walk-step">
+        <div className="n" aria-hidden="true">
+          ▶
+        </div>
+        <div>
+          <h2>Watch it done first</h2>
+          <p>The whole thing on the device you are holding. No sound, about a minute.</p>
+          <Walkthrough />
+        </div>
+      </section>
 
       <section className="step">
         <div className="n">1</div>

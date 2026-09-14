@@ -3,6 +3,7 @@ import logging
 import discord
 
 from rasmai.bot.state.cache import cache_get, forget_analysis
+from rasmai.config import WALKTHROUGH_DIR, get_public_base_url
 from rasmai.storage.db import delete_connected_account, get_connected_account
 from rasmai.security import LOGIN_CODE_TTL, public_reason
 
@@ -99,6 +100,31 @@ class LoginView(OwnerOnlyView):
         check = discord.ui.Button(label="Check connection", style=discord.ButtonStyle.success)
         check.callback = self._check
         self.add_item(check)
+        # the same steps as a recording, played in Discord rather than sending anyone to a browser
+        for label, clip in (("Show me: computer", "desktop"), ("Show me: iPhone", "ios-safari")):
+            watch = discord.ui.Button(label=label, style=discord.ButtonStyle.secondary, row=1)
+            watch.callback = self._walkthrough(clip)
+            self.add_item(watch)
+
+    def _walkthrough(self, clip: str):
+        """A button that answers with one walkthrough recording, only to the person who pressed it.
+
+        :param clip: The recording's file stem.
+        :type clip: str
+        :rtype: Callable
+        """
+        async def callback(interaction: discord.Interaction) -> None:
+            path = WALKTHROUGH_DIR / f"{clip}.mp4"
+            wording = "on a computer" if clip == "desktop" else "on an iPhone, in Safari"
+            if not path.is_file():
+                await interaction.response.send_message(
+                    f"The recording is not on this server. The same walkthrough is at {get_public_base_url()}/link/",
+                    ephemeral=True)
+                return
+            await interaction.response.send_message(
+                f"Linking {wording}, start to finish. No sound, about a minute.",
+                file=discord.File(str(path), filename=f"rasmai-linking-{clip}.mp4"), ephemeral=True)
+        return callback
 
     async def on_timeout(self) -> None:
         for item in self.children:

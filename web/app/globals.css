@@ -272,3 +272,40 @@ html[data-standalone] .masthead-nav a.tag[href="/invite"] { display: none; }
 .notice { display: flex; gap: 12px; align-items: flex-start; margin: 16px 0 0; padding: 10px 14px; border: 2px solid var(--gold-edge); border-radius: 12px; background: color-mix(in srgb, var(--gold) 14%, transparent); color: var(--ink); font-size: 14px; line-height: 1.45; }
 .notice b { font-weight: 700; }
 .notice-lamp { flex: 0 0 auto; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--gold); border: 2px solid var(--gold-edge); animation: throb 1.6s ease-in-out infinite; }
+
+/* the linking walkthrough: one screen recording per device, framed like the device it came from */
+.walkthrough { margin: 16px 0 0; }
+.walk-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); }
+.walk-tabs button { font-family: var(--font-mono), monospace; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px; padding: 10px 15px; cursor: pointer; }
+.walk-tabs button:hover { color: var(--ink); }
+.walk-tabs button.on { color: var(--ink); border-bottom-color: var(--pink); }
+.walk-tabs button:focus-visible { outline: 3px solid var(--cyan); outline-offset: -3px; }
+
+.walk-stage { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; margin-top: 14px; }
+.walk-browser { width: 100%; max-width: 620px; }
+.walk-note { max-width: 620px; }
+.walk-stage video { display: block; width: 100%; height: auto; background: #000; }
+.walk-browser video { aspect-ratio: 1280 / 720; }
+.walk-phone video { aspect-ratio: 560 / 1214; }
+.walk-note { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--ink-2); }
+.walk-note b { display: block; font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.walk-note .dim { color: var(--muted); }
+
+/* a browser window for the desktop recording */
+.walk-browser { border: 1px solid var(--edge); border-radius: 10px; overflow: hidden; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16); background: var(--readout-bg); min-width: 0; }
+.walk-chrome { display: flex; align-items: center; gap: 12px; padding: 9px 13px; background: var(--readout-inset); border-bottom: 1px solid var(--edge); }
+.walk-dots { display: flex; gap: 6px; flex: 0 0 auto; }
+.walk-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--readout-label); opacity: 0.45; }
+.walk-url { flex: 1; text-align: center; font-family: var(--font-mono), monospace; font-size: 11px; color: var(--readout-label); background: rgba(255, 255, 255, 0.07); border-radius: 20px; padding: 3px 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* a handset for the iPhone recording */
+.walk-phone { position: relative; width: min(260px, 100%); padding: 9px; background: var(--readout-bg); border: 1px solid var(--edge); border-radius: 32px; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16); }
+.walk-phone video { border-radius: 24px; }
+.walk-notch { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 84px; height: 17px; border-radius: 12px; background: var(--readout-bg); z-index: 2; pointer-events: none; }
+
+@media (max-width: 760px) {
+  .walk-note { max-width: none; }
+  .walk-tabs button { padding: 10px 12px; font-size: 11px; letter-spacing: 1.2px; }
+}
+
+.walk-step .n { font-size: 26px; line-height: 1.5; }

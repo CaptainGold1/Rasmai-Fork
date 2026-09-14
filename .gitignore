@@ -23,3 +23,8 @@ web/out/
 web/next-env.d.ts
 web/*.tsbuildinfo
 cover_cache/
+
+# walkthrough masters: the web-sized versions live in web/public/walkthrough
+docs/*.gif
+docs/*.mov
+docs/*.mp4

@@ -296,7 +296,7 @@ def build_login_walkthrough_embed(region: str, login_info: Dict[str, str]) -> di
     )
     embed.add_field(name="Region", value=REGION_LABELS.get(region, region), inline=True)
     embed.add_field(name="Link expires", value=expires, inline=True)
-    embed.set_footer(text="This message updates by itself the moment you are connected")
+    embed.set_footer(text="Stuck? The Show me buttons play the whole thing · this card updates itself once you are connected")
     return embed
 
 
