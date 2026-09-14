@@ -22,6 +22,12 @@ type AdminData = {
   live: Record<string, number | boolean | number[] | undefined>;
   generatedAt: string;
   accounts_list?: Account[];
+  guilds_list?: Guild[];
+};
+
+type Guild = {
+  id: string; name: string; icon: string; members: number;
+  ownerId: string; owner: string; joinedAt: string; shard: number; configured: boolean;
 };
 
 type Account = Person & {
@@ -344,6 +350,54 @@ export function AdminPanel() {
             )}
           </section>
         </div>
+
+        <section className="ledger">
+          <div className="ledger-head">
+            <Label>every server · {data.guilds_list?.length ?? 0}</Label>
+            <span className="mono hint">
+              {num((data.guilds_list ?? []).reduce((sum, g) => sum + g.members, 0))} members in reach · biggest first
+            </span>
+          </div>
+          {!data.guilds_list?.length ? (
+            <Empty>The bot is in no servers, or has not finished connecting.</Empty>
+          ) : (
+            <div className="scroll">
+              <table className="tbl compact keep admin-users">
+                <thead>
+                  <tr>
+                    <th>Server</th>
+                    <th className="c-num">Members</th>
+                    <th>Owner</th>
+                    <th className="c-num">Added</th>
+                    <th>State</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.guilds_list.map((g) => (
+                    <tr key={g.id}>
+                      <td>
+                        <span className="who">
+                          {g.icon ? <img src={g.icon} alt="" width={26} height={26} loading="lazy" /> : <span className="who-blank" />}
+                          <span className="who-text">
+                            <b>{g.name}</b>
+                            <span className="mono dim">{g.id}</span>
+                          </span>
+                        </span>
+                      </td>
+                      <td className="c-num mono strong">{num(g.members)}</td>
+                      <td className="mono">{g.owner || g.ownerId || "—"}</td>
+                      <td className="c-num mono dim">{g.joinedAt ? when(g.joinedAt) : "—"}</td>
+                      <td className="mono">
+                        {g.configured ? <span className="dim">set up</span> : <span className="dim">defaults</span>}
+                        <span className="dim"> · shard {g.shard}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
 
         <section className="ledger">
           <div className="ledger-head">

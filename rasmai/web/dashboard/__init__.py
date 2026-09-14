@@ -47,6 +47,7 @@ from rasmai.web.dashboard.files import (  # noqa: F401
 from rasmai.web.dashboard.imports import import_payload  # noqa: F401
 from rasmai.web.dashboard.admin import (  # noqa: F401
     admin_payload,
+    guilds_payload,
     accounts_payload,
     account_detail,
     is_admin,

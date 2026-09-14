@@ -606,6 +606,43 @@ def _admin():
             problems.append(f"the route answered {handler.sent} to {who}, expected a 404")
         elif handler.sent[0][1].get("error") != "not_found":
             problems.append(f"the refusal names the page: {handler.sent[0][1]}")
+
+    # the page lists both halves of what the bot reaches, and neither is allowed to throw on the
+    # awkward server: no icon, no member count, not sharded, and no record of the bot joining
+    import sys, types
+    from rasmai.web.dashboard import admin as admin_module
+    was = sys.modules.get("rasmai.bot.core")
+
+    class Server:
+        def __init__(self, **fields):
+            self.__dict__.update(fields)
+
+    joined = types.SimpleNamespace(joined_at=None)
+    sys.modules["rasmai.bot.core"] = types.SimpleNamespace(bot=types.SimpleNamespace(guilds=[
+        Server(id=1, name="small", icon=None, member_count=None, owner_id=None, me=None, shard_id=None),
+        Server(id=2, name="big", icon=None, member_count=900, owner_id=None, me=joined, shard_id=0),
+    ]))
+    try:
+        listed = admin_module.guilds_payload()
+    except Exception as error:
+        listed = []
+        problems.append(f"a server the gateway told us little about broke the list: {type(error).__name__}: {error}")
+    finally:
+        if was is not None:
+            sys.modules["rasmai.bot.core"] = was
+        else:
+            sys.modules.pop("rasmai.bot.core", None)
+    if [g["name"] for g in listed] != ["big", "small"]:
+        problems.append(f"servers should be listed biggest first: {[g.get('name') for g in listed]}")
+    if listed and listed[1]["members"] != 0:
+        problems.append("a server with no member count should read as zero, not None")
+
+    handler = Fake()
+    routes.handle_get(handler, "/internal/me/admin", {}, {"id": ADMIN_USER_ID})
+    body = handler.sent[0][1] if handler.sent else {}
+    for half in ("guilds_list", "accounts_list"):
+        if half not in body:
+            problems.append(f"the developer page no longer carries {half}")
     return problems
 
 

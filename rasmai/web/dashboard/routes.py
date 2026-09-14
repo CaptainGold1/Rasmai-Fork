@@ -7,7 +7,7 @@ import re
 from rasmai.security import import_limiter, public_reason, refresh_limiter
 from rasmai.storage.db import delete_connected_account, get_connected_account
 from rasmai.bot.state.cache import forget_analysis
-from rasmai.web.dashboard.admin import account_detail, accounts_payload, admin_payload, is_admin
+from rasmai.web.dashboard.admin import account_detail, accounts_payload, admin_payload, guilds_payload, is_admin
 from rasmai.web.dashboard.analysis import analysis_for_user
 from rasmai.web.dashboard.areas import areas_payload
 from rasmai.web.dashboard.lookup import chart_payload, patterns_payload, search_payload, video_payload
@@ -56,7 +56,7 @@ def handle_get(handler: Any, path: str, query: Dict[str, List[str]], user: Dict[
             detail = account_detail(who)
             handler._send_json(200 if detail else 404, detail or {"ok": False, "error": "not_found"})
             return True
-        handler._send_json(200, {**admin_payload(), "accounts_list": accounts_payload()})
+        handler._send_json(200, {**admin_payload(), "accounts_list": accounts_payload(), "guilds_list": guilds_payload()})
         return True
     if account is None:
         handler._send_json(404, {"ok": False, "error": "not_linked"})

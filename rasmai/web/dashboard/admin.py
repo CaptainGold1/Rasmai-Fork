@@ -174,6 +174,44 @@ def account_detail(user_id: str) -> Optional[Dict[str, Any]]:
     }
 
 
+def guilds_payload() -> List[Dict[str, Any]]:
+    """Every Discord server the bot is in, biggest first.
+
+    Read entirely from what the gateway already told us, so it costs no API calls: the member
+    counts arrive with the server itself. `configured` marks the ones that have set something
+    with /server-settings, which is the closest thing to a sign a server actually uses the bot.
+
+    :rtype: List[Dict[str, Any]]
+    """
+    try:
+        from rasmai.bot.core import bot
+        guilds = list(bot.guilds)
+    except Exception:
+        return []
+    connection = get_database_connection()
+    try:
+        configured = {str(row["guild_id"]) for row in _rows(connection, "SELECT guild_id FROM guild_settings")}
+    finally:
+        connection.close()
+    out = []
+    for guild in guilds:
+        me = guild.me
+        out.append({
+            "id": str(guild.id),
+            "name": guild.name,
+            "icon": str(guild.icon.url) if guild.icon else "",
+            "members": int(guild.member_count or 0),
+            "ownerId": str(guild.owner_id or ""),
+            "joinedAt": me.joined_at.isoformat(timespec="seconds") if me is not None and me.joined_at else "",
+            "shard": int(guild.shard_id or 0),
+            "configured": str(guild.id) in configured,
+        })
+    out.sort(key=lambda g: g["members"], reverse=True)
+    # the owners are worth a name, and they are few enough that one lookup each is fine
+    known = people([g["ownerId"] for g in out if g["ownerId"]])
+    return [{**g, "owner": known.get(g["ownerId"], {}).get("name", "")} for g in out]
+
+
 def admin_payload() -> Dict[str, Any]:
     """Everything the developer page shows: who is linked, what is stored, and what the process is doing.
 
