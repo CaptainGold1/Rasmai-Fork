@@ -408,6 +408,13 @@ def _expired():
         upsert_connected_account("u1", "intl", "cookie://new")
         if get_connected_account("u1")["sessionExpired"]:
             problems.append("linking again did not clear the flag, so the banner would never go away")
+        # not every refusal is a dead cookie: maimai serves the same error page for passing faults,
+        # so a read that lands afterwards has to clear the flag without making anyone link again
+        from rasmai.storage.db import update_account_snapshot
+        mark_session_expired("u1", "2026-09-13T10:00:00")
+        update_account_snapshot("u1", {"name": "Nek"}, {"charts": []})
+        if get_connected_account("u1")["sessionExpired"]:
+            problems.append("a read that succeeded left the account flagged as expired")
         return problems
     finally:
         store.DATABASE_PATH = was

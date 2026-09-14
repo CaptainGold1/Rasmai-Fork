@@ -302,7 +302,9 @@ def update_account_snapshot(user_id: str, official_profile: Optional[Dict[str, A
                 UPDATE connected_accounts
                 SET official_profile = COALESCE(?, official_profile),
                     latest_snapshot  = COALESCE(?, latest_snapshot),
-                    updated_at       = ?
+                    updated_at       = ?,
+                    -- a read that landed proves the session works, whatever an earlier one thought
+                    session_expired  = ''
                 WHERE user_id = ?
                 """,
                 (_dump_json_column(official_profile), _dump_json_column(snapshot), datetime.now().isoformat(), user_id),
