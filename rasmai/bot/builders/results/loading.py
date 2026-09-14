@@ -5,6 +5,7 @@ import discord
 import logging
 
 from rasmai.engine import analysis
+from rasmai.bot.state import reads
 from rasmai.bot.state.cache import CachedAnalysis, cache_get
 from rasmai.bot.ui.progress import Progress
 from rasmai.config import RECHECK_AFTER
@@ -109,14 +110,25 @@ async def load_analysis(interaction: discord.Interaction, force: bool = False) -
                 return cached
     running = _inflight.get(user_id)
     if running is not None:
+        # another command of theirs is already reading: wait on that one rather than start a second
         await interaction.edit_original_response(
             content="Your scores are already being read for another command; this one follows it.",
             embed=None, attachments=[], view=None,
         )
         return await asyncio.shield(running)
+    elsewhere = reads.claim(user_id, reads.DISCORD)
+    if elsewhere is not None:
+        # a read started somewhere this command cannot wait on, so say so rather than read twice
+        await interaction.edit_original_response(
+            content=f"Your scores are being read right now, started from **{elsewhere}**. "
+                    "Give it a moment and run this again; reading twice at once would only slow both down.",
+            embed=None, attachments=[], view=None,
+        )
+        return None
     task = asyncio.ensure_future(_fresh_analysis(interaction, user_id, force))
     _inflight[user_id] = task
     try:
         return await task
     finally:
         _inflight.pop(user_id, None)
+        reads.release(user_id)

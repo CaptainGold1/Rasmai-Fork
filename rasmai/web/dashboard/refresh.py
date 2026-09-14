@@ -3,6 +3,7 @@ from typing import Dict, Any
 import logging
 import threading
 
+from rasmai.bot.state import reads
 from rasmai.bot.state.cache import CachedAnalysis
 from rasmai.bot.state.snapshots import collect_judgements, persist_progress
 from rasmai.bot.tasks.chart_db import resolve_unknown
@@ -34,6 +35,12 @@ class RefreshJobs:
             job = self._jobs.get(user_id)
             if job and job.get("running"):
                 return dict(job)
+            elsewhere = reads.claim(user_id, reads.WEBSITE)
+            if elsewhere is not None:
+                # a Discord command is already reading this account; a second read would only slow both
+                return {"running": False, "stage": "failed", "done": 0, "total": 0, "detail": "",
+                        "error": f"your scores are being read right now, started from {elsewhere}. "
+                                 "Give it a moment and try again."}
             job = {"running": True, "stage": "queued", "done": 0, "total": 0, "detail": "", "error": "",
                    "startedAt": datetime.now().isoformat(timespec="seconds")}
             self._jobs[user_id] = job
@@ -48,6 +55,13 @@ class RefreshJobs:
 
     def _run(self, user_id: str, account: Dict[str, Any], job: Dict[str, Any]) -> None:
         tell = self._tell(job)
+        try:
+            self._read(user_id, account, job, tell)
+        finally:
+            # the slot goes back however this ended, or nothing could read this account again
+            reads.release(user_id)
+
+    def _read(self, user_id: str, account: Dict[str, Any], job: Dict[str, Any], tell: Any) -> None:
         try:
             with self._slots:
                 region = account.get("region", "intl")

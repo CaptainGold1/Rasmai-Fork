@@ -459,6 +459,35 @@ def _losses():
     return problems
 
 
+@check("one full read per account, whichever side asked for it")
+def _one_read():
+    from rasmai.bot.state import reads
+    problems = []
+    reads.release("u1")
+    if reads.claim("u1", reads.DISCORD) is not None:
+        problems.append("a free account would not start a read")
+    held = reads.claim("u1", reads.WEBSITE)
+    if held != reads.DISCORD:
+        problems.append(f"the website started a second read while Discord was reading: {held!r}")
+    if reads.claim("u1", reads.DISCORD) != reads.DISCORD:
+        problems.append("a second Discord read was allowed alongside the first")
+    if reads.running("u1") != reads.DISCORD:
+        problems.append("the slot does not say who holds it")
+    reads.release("u1")
+    if reads.running("u1") is not None:
+        problems.append("the slot was not given back")
+    if reads.claim("u1", reads.WEBSITE) is not None:
+        problems.append("the account could not be read again after the slot was released")
+    reads.release("u1")
+    # one account reading must never block a different one
+    reads.claim("u1", reads.DISCORD)
+    if reads.claim("u2", reads.WEBSITE) is not None:
+        problems.append("one account reading blocked a different account")
+    reads.release("u1")
+    reads.release("u2")
+    return problems
+
+
 @check("a public profile carries only what its owner turned on")
 def _public_profile():
     import tempfile, pathlib
