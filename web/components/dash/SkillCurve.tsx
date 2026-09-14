@@ -30,8 +30,21 @@ export function SkillCurve({ curve, charts, comfort, reach, playedCeiling }: Pro
     // only where the player actually plays: the curve runs to 15 but nobody has scores down at 2
     const lowest = scored.length ? Math.min(...scored.map((c) => c.constant)) : curve[0].c;
     const highest = scored.length ? Math.max(...scored.map((c) => c.constant)) : curve[curve.length - 1].c;
-    const points = curve.filter((p) => p.c >= Math.floor(lowest * 2) / 2 - 0.2 && p.c <= highest + 0.05);
-    if (points.length < 2) return null;
+    const raw = curve.filter((p) => p.c >= Math.floor(lowest * 2) / 2 - 0.2 && p.c <= highest + 0.05);
+    if (raw.length < 2) return null;
+    // the fit steps between half-constant buckets, so up where charts are thin one abandoned run
+    // makes the line jump. A short rolling mean draws the shape without inventing or hiding any of it.
+    const SMOOTH = 3;
+    const points = raw.map((p, i) => {
+      const from = Math.max(0, i - SMOOTH);
+      const to = Math.min(raw.length - 1, i + SMOOTH);
+      const window = raw.slice(from, to + 1);
+      return {
+        c: p.c,
+        e: window.reduce((sum, q) => sum + q.e, 0) / window.length,
+        s: window.reduce((sum, q) => sum + q.s, 0) / window.length,
+      };
+    });
     const x0 = points[0].c;
     const x1 = points[points.length - 1].c;
     const lowAcc = Math.min(93, ...points.map((p) => p.e - p.s), ...scored.map((c) => c.accuracy));
@@ -123,6 +136,16 @@ export function SkillCurve({ curve, charts, comfort, reach, playedCeiling }: Pro
           achievement
         </text>
       </svg>
+      <div className="curve-keys">
+        {([["basic", "#4bb85f"], ["advanced", "#e0a020"], ["expert", "#e2455a"], ["master", "#a266e8"], ["remaster", "#cbbbe8"]] as [string, string][])
+          .filter(([tier]) => scored.some((c) => c.difficulty === tier))
+          .map(([tier, colour]) => (
+            <span key={tier}>
+              <i style={{ background: colour }} />
+              {tier === "remaster" ? "Re:MASTER" : tier}
+            </span>
+          ))}
+      </div>
       <p className="hint">
         Dots below the band are charts you score under your own curve on, and the ones furthest below are where the picks come
         from. The band widens where you have played less, which is the model saying it is less sure.

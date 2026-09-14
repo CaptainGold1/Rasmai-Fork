@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import logging
 import secrets
 
@@ -110,21 +110,25 @@ def public_payload(slug: str) -> Optional[Dict[str, Any]]:
         "shows": shows,
     }
 
+    covers = _covers() if (shows["best50"] or shows["recent"]) else {}
     if shows["best50"]:
         pool = sorted((c for c in charts if c.get("rating")), key=lambda c: -int(c.get("rating") or 0))
         payload["best50"] = {
-            "new": _charts_on_show([c for c in pool if c.get("is_new")][:15]),
-            "old": _charts_on_show([c for c in pool if not c.get("is_new")][:35]),
+            "new": _charts_on_show([c for c in pool if c.get("is_new")][:15], covers),
+            "old": _charts_on_show([c for c in pool if not c.get("is_new")][:35], covers),
         }
     if shows["recent"]:
-        payload["recent"] = [
-            {"title": play.get("key", "").split("|")[0], "difficulty": (play.get("key", "").split("|") + ["", "", ""])[2],
-             "type": (play.get("key", "").split("|") + ["", ""])[1], "achievement": round(float(play.get("achievement") or 0), 4),
-             "rank": rank_for(float(play.get("achievement") or 0)), "day": str(play.get("played_at") or "")[:10]}
-            for play in (load_play_history(user_id, RECENT_ON_SHOW) or [])
-        ]
+        recent = []
+        for play in (load_play_history(user_id, RECENT_ON_SHOW) or []):
+            parts = (str(play.get("key") or "").split("|") + ["", "", ""])[:3]
+            recent.append({"title": parts[0], "type": parts[1] or "std", "difficulty": parts[2],
+                           "achievement": round(float(play.get("achievement") or 0), 4),
+                           "rank": rank_for(float(play.get("achievement") or 0)),
+                           "day": str(play.get("played_at") or "")[:10],
+                           "cover": _cover_for(covers, parts[0], parts[1], parts[2])})
+        payload["recent"] = recent
     if shows["traits"]:
-        payload["traits"] = _traits_on_show(user_id, account)
+        payload["traits"], payload["traitAxes"] = _traits_on_show(user_id, account)
     if shows["areas"]:
         payload["areas"] = _areas_on_show(user_id)
     payload["history"] = [
@@ -134,18 +138,44 @@ def public_payload(slug: str) -> Optional[Dict[str, Any]]:
     return _json_safe(payload)
 
 
-def _charts_on_show(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _covers() -> Dict[Any, str]:
+    """Jacket file per chart, from the shared index. Empty when the database has not loaded yet.
+
+    :rtype: Dict[Any, str]
+    """
+    try:
+        from rasmai.bot.builders.charts.index import shared_index
+        return {key: chart.cover for key, chart in shared_index().items() if chart.cover}
+    except Exception:
+        logger.info("no chart index for a public profile's jackets", exc_info=False)
+        return {}
+
+
+def _cover_for(covers: Dict[Any, str], title: str, chart_type: str, difficulty: str) -> str:
+    return covers.get((str(title).casefold(), (chart_type or "std").lower(), (difficulty or "").lower()), "")
+
+
+def _charts_on_show(rows: List[Dict[str, Any]], covers: Dict[Any, str]) -> List[Dict[str, Any]]:
     return [{
         "title": str(row.get("name") or ""), "difficulty": str(row.get("difficulty_type") or "").lower(),
         "type": str(row.get("chart_type") or "std"), "level": str(row.get("level") or ""),
         "constant": round(float(row.get("constant") or row.get("difficulty") or 0), 1),
         "accuracy": round(float(row.get("accuracy") or 0), 4), "rank": rank_for(float(row.get("accuracy") or 0)),
         "rating": int(row.get("rating") or 0), "fc": str(row.get("fc_status") or ""), "fs": str(row.get("fs_status") or ""),
+        "cover": _cover_for(covers, row.get("name") or "", str(row.get("chart_type") or ""), str(row.get("difficulty_type") or "")),
     } for row in rows]
 
 
-def _traits_on_show(user_id: str, account: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """The player's strongest and weakest traits, as the Traits tab would name them."""
+def _traits_on_show(user_id: str, account: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """The traits worth naming, and the axes the wheel is drawn on.
+
+    :returns: ``(named traits, wheel axes)``, both empty when there is not enough to say.
+    :rtype: Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]
+    """
+    def shape(trait: Dict[str, Any]) -> Dict[str, Any]:
+        return {"label": english_label(str(trait["label"])), "offset": round(float(trait["offset"]), 2),
+                "count": int(trait["count"]), "kind": str(trait["dimension"])}
+
     try:
         from rasmai.engine import insights
         from rasmai.scraping.mai_notes import english_label
@@ -155,12 +185,11 @@ def _traits_on_show(user_id: str, account: Dict[str, Any]) -> List[Dict[str, Any
         shown = insights.notable(axes) + insights.leaning(axes)
         shown.sort(key=lambda trait: float(trait["offset"]))
         picked = shown[:TRAITS_ON_SHOW // 2] + shown[-(TRAITS_ON_SHOW // 2):]
-        return [{"label": english_label(str(t["label"])), "offset": round(float(t["offset"]), 2),
-                 "count": int(t["count"]), "kind": str(t["dimension"])}
-                for t in {id(t): t for t in picked}.values()]
+        named = [shape(t) for t in {id(t): t for t in picked}.values()]
+        return named, [shape(a) for a in insights.radar_axes(axes)]
     except Exception:
         logger.info("could not build traits for a public profile", exc_info=False)
-        return []
+        return [], []
 
 
 def _areas_on_show(user_id: str) -> List[Dict[str, Any]]:

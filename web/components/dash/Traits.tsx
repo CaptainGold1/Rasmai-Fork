@@ -16,7 +16,7 @@ const isEven = (a: Trait) => !a.verified && !a.leaning && a.count >= CONFIRM_CHA
 
 /** Pick the axes the wheel is drawn on: confirmed and leaning traits about play, both halves so the shape has contrast.
  *  A wheel with fewer than six is rounded out with the groups the player plays evenly, which sit on the middle ring. */
-function radarAxes(axes: Trait[], limit = 8): Axis[] {
+export function radarAxes(axes: Trait[], limit = 8): Axis[] {
   const pool: Axis[] = axes.filter((a) => (a.verified || a.leaning) && !NOT_ON_RADAR.has(a.dimension));
   if (pool.length < RADAR_FILL) {
     const fillers = axes.filter((a) => isEven(a) && !NOT_ON_RADAR.has(a.dimension)).sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset));
@@ -81,7 +81,7 @@ function wrapLabel(text: string, width = 14): string[] {
 }
 
 /** The wheel itself. The middle ring is the player's own average; outward is stronger. A hollow point is a leaning trait. */
-function Radar({ axes }: { axes: Axis[] }) {
+export function Radar({ axes }: { axes: Axis[] }) {
   const width = 520;
   const height = 420;
   const midX = width / 2;

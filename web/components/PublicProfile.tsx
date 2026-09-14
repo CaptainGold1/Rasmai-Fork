@@ -3,19 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { Ring } from "@/components/Ring";
 import { ThemeToggle } from "@/components/Theme";
-import { Chip, Empty, Label, num, pct, when } from "./dash/bits";
+import { Chip, Empty, Jacket, Label, num, pct, when } from "./dash/bits";
+import { Radar, radarAxes } from "./dash/Traits";
 
 type Chart = {
   title: string; difficulty: string; type: string; level: string; constant: number;
-  accuracy: number; rank: string; rating: number; fc: string; fs: string;
+  accuracy: number; rank: string; rating: number; fc: string; fs: string; cover: string;
 };
+type SharedTrait = { label: string; offset: number; count: number; kind: string };
 type Shared = {
   name: string; title: string; dan: string; region: string; rating: number; plays: number; charts: number;
   updatedAt: string;
   shows: { best50: boolean; traits: boolean; recent: boolean; areas: boolean };
   best50?: { new: Chart[]; old: Chart[] };
-  recent?: { title: string; difficulty: string; type: string; achievement: number; rank: string; day: string }[];
-  traits?: { label: string; offset: number; count: number; kind: string }[];
+  recent?: { title: string; difficulty: string; type: string; achievement: number; rank: string; day: string; cover: string }[];
+  traits?: SharedTrait[];
+  traitAxes?: SharedTrait[];
   areas?: { name: string; english: string; distance: number; state: string }[];
   history?: { recordedAt: string; rating: number }[];
 };
@@ -78,6 +81,9 @@ function Pool({ title, rows, size }: { title: string; rows: Chart[]; size: numbe
               {rows.map((r, i) => (
                 <tr key={`${r.title}|${r.type}|${r.difficulty}`}>
                   <td className="c-n">{i + 1}</td>
+                  <td className="c-jacket">
+                    <Jacket cover={r.cover} size={32} />
+                  </td>
                   <td className="c-title">
                     <span className="title">{r.title}</span>
                     <Chip difficulty={r.difficulty} level={r.level} constant={r.constant} type={r.type} />
@@ -150,6 +156,7 @@ export function PublicProfile({ slug }: { slug: string }) {
   const weak = (data.traits ?? []).filter((t) => t.offset < 0).sort((a, b) => a.offset - b.offset);
   const strong = (data.traits ?? []).filter((t) => t.offset > 0).sort((a, b) => b.offset - a.offset);
   const best = data.best50 ? [...data.best50.new, ...data.best50.old].sort((a, b) => b.rating - a.rating)[0] : undefined;
+  const wheel = radarAxes((data.traitAxes ?? []) as never);
 
   return (
     <Shell name={data.name}>
@@ -236,7 +243,8 @@ export function PublicProfile({ slug }: { slug: string }) {
               <Label>how they play</Label>
               <span className="mono hint">against their own curve</span>
             </div>
-            <div className="two-up">
+            <div className="two-up radar-split">
+              <div className="radar-wrap">{wheel.length >= 3 ? <Radar axes={wheel} /> : null}</div>
               <div>
                 <div className="ledger-head">
                   <Label>where they lose points</Label>
@@ -254,8 +262,6 @@ export function PublicProfile({ slug }: { slug: string }) {
                 ) : (
                   <p className="hint">Nothing sits below their curve.</p>
                 )}
-              </div>
-              <div>
                 <div className="ledger-head">
                   <Label>where they shine</Label>
                 </div>
@@ -286,10 +292,13 @@ export function PublicProfile({ slug }: { slug: string }) {
             {data.recent.length === 0 ? (
               <Empty>No plays recorded yet.</Empty>
             ) : (
-              <table className="tbl compact nojacket">
+              <table className="tbl compact">
                 <tbody>
                   {data.recent.map((p, i) => (
                     <tr key={`${p.title}${p.day}${i}`}>
+                      <td className="c-jacket">
+                        <Jacket cover={p.cover} size={32} />
+                      </td>
                       <td className="c-title">
                         <span className="title">{p.title}</span>
                         <Chip difficulty={p.difficulty} type={p.type} />

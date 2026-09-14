@@ -599,10 +599,16 @@ html[data-standalone] .dash .ident { margin-top: 16px; }
 .curve-axis.dim { opacity: 0.7; }
 .curve-band { fill: color-mix(in srgb, var(--cyan) 16%, transparent); }
 .curve-line { fill: none; stroke: var(--cyan); stroke-width: 2.5; stroke-linejoin: round; }
-.curve-dot { fill: var(--ink-2); opacity: 0.42; }
-.curve-dot.d-master { fill: var(--pink-edge); }
-.curve-dot.d-remaster { fill: #8f7dff; }
-.curve-dot.d-expert { fill: #4fd18b; }
+/* the dots wear the game's own difficulty colours, the same ones the chips use */
+.curve-dot { fill: var(--muted); opacity: 0.55; }
+.curve-dot.d-basic { fill: #4bb85f; }
+.curve-dot.d-advanced { fill: #e0a020; }
+.curve-dot.d-expert { fill: #e2455a; }
+.curve-dot.d-master { fill: #a266e8; }
+.curve-dot.d-remaster { fill: #cbbbe8; }
+.curve-keys { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.curve-keys span { display: inline-flex; align-items: center; gap: 6px; }
+.curve-keys i { width: 9px; height: 9px; border-radius: 50%; }
 .curve-mark { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
 .curve-mark.comfort { stroke: var(--gold-edge); }
 .curve-mark.reach { stroke: var(--pink-edge); }
