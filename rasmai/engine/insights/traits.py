@@ -116,7 +116,12 @@ class _TraitDesign:
         return beta[self.CONTROLS:]
 
 
-TRAIT_PERMUTATIONS = 80      # shuffles of the tags across charts that give each trait its chance level
+# shuffles of the tags across charts that give each trait its chance level. A p-value can only
+# land on k/(n+1), so too few shuffles puts the whole gate on one shuffle's luck: at 80 the only
+# value under 0.02 was 1/81, meaning zero of 80 allowed, and real traits on hundreds of charts
+# were being refused because a single shuffle beat them. This many resolves the threshold properly
+# and settles on the same answer as twice as many, for about half a second per analysis.
+TRAIT_PERMUTATIONS = 400
 
 
 TRAIT_P = 0.02               # a trait's offset has to be rarer than this under shuffled tags

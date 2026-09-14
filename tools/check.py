@@ -828,6 +828,53 @@ def _site_notice():
     return problems
 
 
+@check("the permutation test can resolve the threshold it is judged against")
+def _trait_confirmation():
+    import math
+    from rasmai.engine.insights import traits as T
+
+    problems = []
+    # a permutation p-value can only land on k/(n+1). If the threshold sits below the second step
+    # the gate silently becomes "not one shuffle may beat it", and a trait measured over hundreds
+    # of charts gets refused on the luck of a single shuffle rather than on the player's data.
+    # This was true at 80 shuffles against p <= 0.02, where 1/81 was the only value that passed.
+    for name, threshold in (("TRAIT_P", T.TRAIT_P), ("TRAIT_LEAN_P", T.TRAIT_LEAN_P)):
+        room = math.floor(threshold * (T.TRAIT_PERMUTATIONS + 1))
+        if room < 4:
+            problems.append(f"{name} <= {threshold} over {T.TRAIT_PERMUTATIONS} shuffles lets only {room} of them "
+                            f"beat a trait: the test cannot resolve its own threshold")
+    if T.TRAIT_CONFIRM_CHARTS < T.TRAIT_MIN_CHARTS:
+        problems.append("a trait cannot need fewer charts to be confirmed than to be measured at all")
+    if T.TRAIT_LEAN_OFFSET >= T.TRAIT_THRESHOLD:
+        problems.append("a leaning trait should be a weaker claim than a confirmed one, not a stronger one")
+    if T.TRAIT_LEAN_P < T.TRAIT_P:
+        problems.append("a leaning trait should be a weaker claim than a confirmed one, not a rarer one")
+
+    # the note types are judged on plays rather than on shuffled tags, but they end up in the same
+    # list, and notable() re-checks every row against TRAIT_THRESHOLD. A note type confirmed under a
+    # lower bar than that would pass its own gate, fail notable(), and be excluded from leaning() for
+    # being confirmed: shown nowhere at all.
+    from rasmai.engine import judgements as J
+    if J.JUDGEMENT_OFFSET < T.TRAIT_THRESHOLD:
+        problems.append(f"a note type confirmed at {J.JUDGEMENT_OFFSET} would vanish from every list, "
+                        f"because a confirmed trait is shown only above {T.TRAIT_THRESHOLD}")
+    if J.JUDGEMENT_LEAN_OFFSET > J.JUDGEMENT_OFFSET:
+        problems.append("a note type should not need a bigger offset to lean than to be confirmed")
+    if J.JUDGEMENT_LEAN_PLAYS > J.JUDGEMENT_CONFIRM_PLAYS:
+        problems.append("a note type should not need more plays to lean than to be confirmed")
+
+    # every trait row carries the same keys whichever side it came from, or the pages that read
+    # both lists have to know which is which
+    rows = J.judgement_traits([{"notes": {k: {"critical": 500, "perfect": 0, "great": 0, "good": 0, "miss": 0}
+                                          for k in J.KINDS}, "achievement": 100.0} for _ in range(30)])
+    for row in rows:
+        missing = {"dimension", "label", "offset", "count", "p", "verified", "leaning"} - set(row)
+        if missing:
+            problems.append(f"a note-type trait is missing {sorted(missing)}, which the trait lists expect")
+        break
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:

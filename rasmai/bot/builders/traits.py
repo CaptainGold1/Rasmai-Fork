@@ -72,9 +72,16 @@ async def build_traits(cached: CachedAnalysis) -> Tuple[discord.Embed, List[disc
         embed.description = (f"Nothing separates from noise yet: **{len(axes)}** groups measured over **{sample}** scored charts, "
                              f"none far enough from your usual score to trust.\n-# more plays sharpen this: every recorded play counts, not only your bests")
         if largest:
+            # the note types come from the judgement pages, not from shuffling tags across charts,
+            # so they are counted in plays and carry no shuffle statistic to quote
+            def _measured(t):
+                if t["dimension"] == "judgement":
+                    return f"`{float(t['offset']):+.2f}` {t['label']} · over {t['count']} plays"
+                odds = max(1, round(1 / max(float(t["p"]), 1 / (insights.TRAIT_PERMUTATIONS + 1))))
+                return f"`{float(t['offset']):+.2f}` {t['label']} · {t['count']} charts · 1 in {odds} shuffles matched it"
+
             embed.add_field(name="Largest measured, none confirmed",
-                            value=_fit([f"`{float(t['offset']):+.2f}` {t['label']} · {t['count']} charts · 1 in {max(1, round(1 / max(float(t['p']), 0.001)))} shuffles matched it"
-                                        for t in largest]), inline=False)
+                            value=_fit([_measured(t) for t in largest]), inline=False)
     else:
         level = [english_label(str(t["label"])) for t in even[:2]]
         among = f", {' and '.join(level)} among them" if level else ""
