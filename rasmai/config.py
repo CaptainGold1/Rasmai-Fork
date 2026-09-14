@@ -22,6 +22,9 @@ DEBUG_EXPORT_DIR = Path("debug/maimai-exports")
 # loopback or the container network, and give both processes the same RASMAI_INTERNAL_SECRET.
 WEBSERVER_HOST = os.getenv("MAIMAI_WEBSERVER_HOST", "127.0.0.1")
 INTERNAL_API_SECRET = os.getenv("RASMAI_INTERNAL_SECRET", "").strip()
+
+# the only Discord account the developer page answers to; everyone else gets a 404 from it
+ADMIN_USER_ID = os.getenv("MAIMAI_ADMIN_ID", "178277628522921984").strip()
 # where a bot-run cloudflared tunnel should point: the public site, which is the Next.js server
 TUNNEL_ORIGIN = os.getenv("MAIMAI_TUNNEL_ORIGIN", "http://127.0.0.1:3000").strip().rstrip("/")
 

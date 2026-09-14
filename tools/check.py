@@ -452,6 +452,37 @@ def _losses():
     return problems
 
 
+@check("the developer page answers one account and 404s for everyone else")
+def _admin():
+    from rasmai.config import ADMIN_USER_ID
+    from rasmai.web.dashboard import routes
+    from rasmai.web.dashboard.admin import is_admin
+    problems = []
+    if not ADMIN_USER_ID.isdigit():
+        problems.append(f"the admin id should be a Discord snowflake, it is {ADMIN_USER_ID!r}")
+    for other in ("", "0", ADMIN_USER_ID + "1", ADMIN_USER_ID[:-1], " " + ADMIN_USER_ID):
+        if is_admin(other):
+            problems.append(f"{other!r} was let in")
+    if not is_admin(ADMIN_USER_ID):
+        problems.append("the admin id itself was refused")
+
+    class Fake:
+        def __init__(self):
+            self.sent = []
+
+        def _send_json(self, status, body):
+            self.sent.append((status, body))
+
+    for who in (ADMIN_USER_ID + "9", "1"):
+        handler = Fake()
+        routes.handle_get(handler, "/internal/me/admin", {}, {"id": who})
+        if not handler.sent or handler.sent[0][0] != 404:
+            problems.append(f"the route answered {handler.sent} to {who}, expected a 404")
+        elif handler.sent[0][1].get("error") != "not_found":
+            problems.append(f"the refusal names the page: {handler.sent[0][1]}")
+    return problems
+
+
 @check("note types become traits measured against what was at stake on them")
 def _judgement_traits():
     from rasmai.engine.judgements import JUDGEMENT_CONFIRM_PLAYS, judgement_traits
