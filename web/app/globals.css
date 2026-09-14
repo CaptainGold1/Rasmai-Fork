@@ -309,3 +309,21 @@ html[data-standalone] .masthead-nav a.tag[href="/invite"] { display: none; }
 }
 
 .walk-step .n { font-size: 26px; line-height: 1.5; }
+
+/* the masthead ring: lit like an idle cabinet rather than dead, and it walks a lap when pointed at.
+   the rim, its edge and the screen are circles too, so the eight buttons are children 4 through 11 */
+.masthead .ring .btn:nth-of-type(5), .masthead .ring .btn:nth-of-type(9) { fill: var(--pink); stroke: var(--pink-edge); }
+.masthead .ring:hover .btn { animation: masthead-chase 2.4s linear infinite; }
+.masthead .ring:hover .btn:nth-of-type(4) { animation-delay: 0s; }
+.masthead .ring:hover .btn:nth-of-type(5) { animation-delay: 0.3s; }
+.masthead .ring:hover .btn:nth-of-type(6) { animation-delay: 0.6s; }
+.masthead .ring:hover .btn:nth-of-type(7) { animation-delay: 0.9s; }
+.masthead .ring:hover .btn:nth-of-type(8) { animation-delay: 1.2s; }
+.masthead .ring:hover .btn:nth-of-type(9) { animation-delay: 1.5s; }
+.masthead .ring:hover .btn:nth-of-type(10) { animation-delay: 1.8s; }
+.masthead .ring:hover .btn:nth-of-type(11) { animation-delay: 2.1s; }
+@keyframes masthead-chase {
+  0%, 10% { fill: var(--pink); stroke: var(--pink-edge); }
+  18%, 100% { fill: var(--paper); stroke: var(--edge); }
+}
+@media (prefers-reduced-motion: reduce) { .masthead .ring:hover .btn { animation: none; } }

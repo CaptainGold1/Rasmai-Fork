@@ -29,7 +29,8 @@ export function SkillCurve({ curve, charts, comfort, reach, playedCeiling }: Pro
     if (curve.length < 2) return null;
     // only where the player actually plays: the curve runs to 15 but nobody has scores down at 2
     const lowest = scored.length ? Math.min(...scored.map((c) => c.constant)) : curve[0].c;
-    const points = curve.filter((p) => p.c >= Math.floor(lowest * 2) / 2 - 0.2);
+    const highest = scored.length ? Math.max(...scored.map((c) => c.constant)) : curve[curve.length - 1].c;
+    const points = curve.filter((p) => p.c >= Math.floor(lowest * 2) / 2 - 0.2 && p.c <= highest + 0.05);
     if (points.length < 2) return null;
     const x0 = points[0].c;
     const x1 = points[points.length - 1].c;
@@ -52,15 +53,13 @@ export function SkillCurve({ curve, charts, comfort, reach, playedCeiling }: Pro
 
   if (!shape) return null;
   const { x, y, x0, x1, y0, line, band, ticks, rows } = shape;
-  const mark = (value: number | undefined, label: string, cls: string) =>
-    value && value >= x0 && value <= x1 ? (
-      <g key={label}>
-        <line x1={x(value)} y1={PAD.top} x2={x(value)} y2={H - PAD.bottom} className={`curve-mark ${cls}`} />
-        <text x={x(value)} y={PAD.top + 10} className={`curve-mark-label ${cls}`} textAnchor="middle">
-          {label}
-        </text>
-      </g>
-    ) : null;
+  const marks = (
+    [
+      [comfort, "comfortable", "comfort"],
+      [reach, "S expected", "reach"],
+      [playedCeiling, "hardest played", "ceiling"],
+    ] as [number | undefined, string, string][]
+  ).filter(([value]) => value && value >= x0 && value <= x1);
 
   return (
     <section className="ledger">
@@ -97,9 +96,26 @@ export function SkillCurve({ curve, charts, comfort, reach, playedCeiling }: Pro
           </circle>
         ))}
         <polyline points={line} className="curve-line" />
-        {mark(comfort, "comfortable", "comfort")}
-        {mark(reach, "S expected", "reach")}
-        {mark(playedCeiling, "hardest played", "ceiling")}
+        {marks.map(([value, label, cls], i) => {
+          const at = x(value as number);
+          // the labels stack on their own rows and hug whichever side they are nearest, so two
+          // markers a few tenths apart never print over each other
+          const row = PAD.top + 11 + i * 13;
+          const near = at > W - PAD.right - 70;
+          return (
+            <g key={label}>
+              <line x1={at} y1={PAD.top} x2={at} y2={H - PAD.bottom} className={`curve-mark ${cls}`} />
+              <text
+                x={near ? at - 5 : at + 5}
+                y={row}
+                className={`curve-mark-label ${cls}`}
+                textAnchor={near ? "end" : "start"}
+              >
+                {label} {(value as number).toFixed(1)}
+              </text>
+            </g>
+          );
+        })}
         <text x={W - PAD.right} y={H - 4} textAnchor="end" className="curve-axis dim">
           chart constant →
         </text>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Ring } from "@/components/Ring";
 import { ThemeToggle } from "@/components/Theme";
 import { Chip, Empty, Label, num, pct, when } from "./dash/bits";
@@ -19,25 +19,48 @@ type Shared = {
   areas?: { name: string; english: string; distance: number; state: string }[];
   history?: { recordedAt: string; rating: number }[];
 };
+type Panel = "overview" | "best50" | "traits" | "recent" | "areas";
 
-function Line({ points }: { points: { recordedAt: string; rating: number }[] }) {
+function Shell({ children, name }: { children: React.ReactNode; name?: string }) {
+  return (
+    <div className="frame dash">
+      <header className="masthead">
+        <a className="home" href="/">
+          <Ring lit={0} size={34} />
+        </a>
+        <div className="wordmark">
+          Ras<span>mai</span>
+        </div>
+        {name ? <span className="masthead-tag mono">{name}</span> : null}
+        <ThemeToggle />
+      </header>
+      {children}
+    </div>
+  );
+}
+
+function RatingLine({ points }: { points: { recordedAt: string; rating: number }[] }) {
   if (points.length < 2) return null;
   const values = points.map((p) => p.rating);
   const low = Math.min(...values);
   const high = Math.max(...values);
   const span = Math.max(1, high - low);
-  const path = points
-    .map((p, i) => `${(100 * i) / (points.length - 1)},${30 - (28 * (p.rating - low)) / span}`)
-    .join(" ");
+  const path = points.map((p, i) => `${(100 * i) / (points.length - 1)},${30 - (28 * (p.rating - low)) / span}`).join(" ");
   return (
-    <svg className="share-spark" viewBox="0 0 100 32" preserveAspectRatio="none" role="img" aria-label={`rating from ${low} to ${high}`}>
-      <polyline points={path} fill="none" stroke="var(--pink)" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
-    </svg>
+    <>
+      <svg className="share-spark" viewBox="0 0 100 32" preserveAspectRatio="none" role="img" aria-label={`rating from ${low} to ${high}`}>
+        <polyline points={path} fill="none" stroke="var(--pink)" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
+      </svg>
+      <div className="admin-axis mono">
+        <span>{num(low)}</span>
+        <span className="dim">{points.length} readings</span>
+        <span>{num(high)}</span>
+      </div>
+    </>
   );
 }
 
 function Pool({ title, rows, size }: { title: string; rows: Chart[]; size: number }) {
-  if (!rows.length) return null;
   return (
     <section className="ledger">
       <div className="ledger-head">
@@ -46,25 +69,29 @@ function Pool({ title, rows, size }: { title: string; rows: Chart[]; size: numbe
         </Label>
         <span className="mono hint">{num(rows.reduce((sum, r) => sum + r.rating, 0))} rating</span>
       </div>
-      <div className="scroll">
-        <table className="tbl compact b50 keep">
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={`${r.title}|${r.type}|${r.difficulty}`}>
-                <td className="c-n">{i + 1}</td>
-                <td className="c-title">
-                  <span className="title">{r.title}</span>
-                  <Chip difficulty={r.difficulty} level={r.level} constant={r.constant} type={r.type} />
-                </td>
-                <td className="c-num mono c-acc">
-                  {pct(r.accuracy)} <b>{r.rank}</b>
-                </td>
-                <td className="c-num mono strong c-rating">{r.rating}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {rows.length === 0 ? (
+        <Empty>Nothing in this pool yet.</Empty>
+      ) : (
+        <div className="scroll">
+          <table className="tbl compact b50 keep">
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={`${r.title}|${r.type}|${r.difficulty}`}>
+                  <td className="c-n">{i + 1}</td>
+                  <td className="c-title">
+                    <span className="title">{r.title}</span>
+                    <Chip difficulty={r.difficulty} level={r.level} constant={r.constant} type={r.type} />
+                  </td>
+                  <td className="c-num mono c-acc">
+                    {pct(r.accuracy)} <b>{r.rank}</b>
+                  </td>
+                  <td className="c-num mono strong c-rating">{r.rating}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
@@ -72,6 +99,7 @@ function Pool({ title, rows, size }: { title: string; rows: Chart[]; size: numbe
 export function PublicProfile({ slug }: { slug: string }) {
   const [data, setData] = useState<Shared | null>(null);
   const [gone, setGone] = useState(false);
+  const [panel, setPanel] = useState<Panel>("overview");
 
   useEffect(() => {
     fetch(`/api/public/${encodeURIComponent(slug)}`)
@@ -82,92 +110,127 @@ export function PublicProfile({ slug }: { slug: string }) {
       .catch(() => setGone(true));
   }, [slug]);
 
+  const panels = useMemo(() => {
+    if (!data) return [];
+    const out: { key: Panel; label: string }[] = [{ key: "overview", label: "Overview" }];
+    if (data.best50) out.push({ key: "best50", label: "Best 50" });
+    if (data.traits?.length) out.push({ key: "traits", label: "Traits" });
+    if (data.recent) out.push({ key: "recent", label: "Recent" });
+    if (data.areas?.length) out.push({ key: "areas", label: "Areas" });
+    return out;
+  }, [data]);
+
   if (gone) {
     return (
-      <div className="frame dash">
-        <header className="masthead">
-          <a className="home" href="/">
-            <Ring lit={0} size={34} />
-          </a>
-          <div className="wordmark">
-            Ras<span>mai</span>
-          </div>
-          <ThemeToggle />
-        </header>
+      <Shell>
         <div className="gate">
           <h1>
             This profile is <em>not shared</em>.
           </h1>
-          <p className="lede">The link may have been turned off, or replaced with a new one. Ask whoever sent it for the current link.</p>
+          <p className="lede">
+            The link may have been turned off, or replaced with a new one. Ask whoever sent it for the current link.
+          </p>
           <a className="button" href="/">
             what Rasmai does →
           </a>
         </div>
-      </div>
+      </Shell>
     );
   }
   if (!data) {
     return (
-      <div className="frame dash">
+      <Shell>
         <div className="gate">
           <p className="hint">Loading…</p>
         </div>
-      </div>
+      </Shell>
     );
   }
 
   const weak = (data.traits ?? []).filter((t) => t.offset < 0).sort((a, b) => a.offset - b.offset);
   const strong = (data.traits ?? []).filter((t) => t.offset > 0).sort((a, b) => b.offset - a.offset);
+  const best = data.best50 ? [...data.best50.new, ...data.best50.old].sort((a, b) => b.rating - a.rating)[0] : undefined;
+
   return (
-    <div className="frame dash">
-      <header className="masthead">
-        <a className="home" href="/">
-          <Ring lit={0} size={34} />
-        </a>
-        <div className="wordmark">
-          Ras<span>mai</span>
+    <Shell name={data.name}>
+      <section className="ident">
+        <div className="ident-who">
+          <div className="label">{data.region.toUpperCase()} · shared profile</div>
+          <h1>{data.name}</h1>
+          <div className="ident-sub mono">
+            {[data.dan, data.title].filter(Boolean).join(" · ") || "no title read yet"} · {num(data.plays)} plays · read{" "}
+            {when(data.updatedAt)}
+          </div>
         </div>
-        <ThemeToggle />
-      </header>
+        <div className="readout big">
+          <span className="lbl">rating</span>
+          <span className="val">{num(data.rating)}</span>
+          <span className="lbl">charts</span>
+          <span className="val">{num(data.charts)}</span>
+        </div>
+      </section>
+
+      {panels.length > 1 && (
+        <nav className="tabs" aria-label="what this profile shares">
+          {panels.map((p) => (
+            <button key={p.key} type="button" className={panel === p.key ? "on" : ""} onClick={() => setPanel(p.key)}>
+              {p.label}
+            </button>
+          ))}
+        </nav>
+      )}
 
       <main className="panel">
-        <section className="ident">
-          <div className="ident-who">
-            <div className="label">
-              {data.region.toUpperCase()} · shared profile
-            </div>
-            <h1>{data.name}</h1>
-            <div className="ident-sub mono">
-              {[data.dan, data.title].filter(Boolean).join(" · ") || "no title read yet"} · {num(data.plays)} plays · read{" "}
-              {when(data.updatedAt)}
-            </div>
-          </div>
-          <div className="readout big">
-            <span className="lbl">rating</span>
-            <span className="val">{num(data.rating)}</span>
-            <span className="lbl">charts</span>
-            <span className="val">{num(data.charts)}</span>
-          </div>
-        </section>
-
-        {data.history && data.history.length > 1 && (
-          <section className="ledger">
-            <div className="ledger-head">
-              <Label>rating over time</Label>
-              <span className="mono hint">{data.history.length} readings</span>
-            </div>
-            <Line points={data.history} />
-          </section>
+        {panel === "overview" && (
+          <>
+            {data.history && data.history.length > 1 && (
+              <section className="ledger">
+                <div className="ledger-head">
+                  <Label>rating over time</Label>
+                  <span className="mono hint">as the bot has read it</span>
+                </div>
+                <RatingLine points={data.history} />
+              </section>
+            )}
+            <section className="ledger">
+              <div className="ledger-head">
+                <Label>at a glance</Label>
+              </div>
+              <dl className="facts">
+                <dt>rating</dt>
+                <dd className="mono">{num(data.rating)}</dd>
+                <dt>charts scored</dt>
+                <dd className="mono">{num(data.charts)}</dd>
+                <dt>plays on the cabinet</dt>
+                <dd className="mono">{num(data.plays)}</dd>
+                {best ? (
+                  <>
+                    <dt>best single chart</dt>
+                    <dd className="mono">
+                      {best.title} · {best.rating}
+                    </dd>
+                  </>
+                ) : null}
+                <dt>last read</dt>
+                <dd className="mono">{when(data.updatedAt)}</dd>
+              </dl>
+              <p className="hint">
+                {panels.length > 1
+                  ? "The tabs above are what this player chose to share. Anything not there was left private."
+                  : "This player shares their rating only. Anything else was left private."}
+              </p>
+            </section>
+          </>
         )}
 
-        {data.best50 && (
+        {panel === "best50" && data.best50 && (
           <div className="two-up wide-right">
             <Pool title="new version" rows={data.best50.new} size={15} />
             <Pool title="older versions" rows={data.best50.old} size={35} />
           </div>
         )}
 
-        {data.traits && data.traits.length > 0 && (
+        {panel === "traits" && (
           <section className="ledger">
             <div className="ledger-head">
               <Label>how they play</Label>
@@ -214,7 +277,7 @@ export function PublicProfile({ slug }: { slug: string }) {
           </section>
         )}
 
-        {data.recent && (
+        {panel === "recent" && data.recent && (
           <section className="ledger">
             <div className="ledger-head">
               <Label>recent plays</Label>
@@ -243,7 +306,7 @@ export function PublicProfile({ slug }: { slug: string }) {
           </section>
         )}
 
-        {data.areas && data.areas.length > 0 && (
+        {panel === "areas" && data.areas && (
           <section className="ledger">
             <div className="ledger-head">
               <Label>area travel</Label>
@@ -272,6 +335,6 @@ export function PublicProfile({ slug }: { slug: string }) {
           <span>only what this player chose to share is on this page</span>
         </footer>
       </main>
-    </div>
+    </Shell>
   );
 }
