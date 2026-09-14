@@ -681,6 +681,43 @@ def _judgements():
     return problems
 
 
+@check("a version the player's region has not had yet is never suggested to them")
+def _version_rollover():
+    from rasmai.bot.builders.charts import VERSION_NAMES, version_name
+    from rasmai.engine.analysis.charts import ChartIndex, ChartRef
+    from rasmai.engine.analysis.rating import version_major
+
+    def chart(version, intl):
+        return ChartRef(title=f"v{version}", chart_type="std", difficulty="master", constant=13.0,
+                        level="13", notes=800, genre="", artist="", cover="", version=version, intl=intl)
+
+    problems = []
+    index = ChartIndex("intl")
+    index.current_version = 26                      # the player is on CiRCLE PLUS, as international is
+    # the chart database tracks the Japanese game, so the next version's charts appear months early
+    if index.playable(chart(27, intl=False)):
+        problems.append("a chart from a version international has not had yet should not be suggested")
+    if not index.playable(chart(26, intl=False)):
+        problems.append("the flag lags on the player's own version, so those charts must still be suggested")
+    if not index.playable(chart(27, intl=True)):
+        problems.append("once the flag says international has it, a newer chart is suggestable")
+    if not index.playable(chart(25, intl=True)):
+        problems.append("an older chart that international has should be suggested")
+    if index.playable(chart(25, intl=False)):
+        problems.append("an older chart international never got should stay hidden")
+
+    # the first three digits are the version, and a PLUS shares its major with the version it extends
+    if version_major("270") != 27 or version_major("265") != version_major("260"):
+        problems.append("version codes should fold a PLUS into the version it extends")
+    for code in ("260", "265", "270"):
+        if code not in VERSION_NAMES:
+            problems.append(f"version {code} has no name")
+    named = version_name({"version": "27000"})
+    if named != "MAGiCAL":
+        problems.append(f"the newest version should be named, not numbered: {named}")
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:

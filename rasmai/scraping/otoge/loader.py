@@ -14,14 +14,14 @@ def load_songs_from_repo(db: Any) -> bool:
         db._log("STARTING SONG LOAD FROM REPO", "info")
         db._log("=" * 60, "info")
 
-        music_files = [
-            ('music-intl.json', 'intl'),
-            ('music-ex.json', 'ex'),
-            ('music-ex-circle-final.json', 'ex'),
-            ('music-ex-prism-final.json', 'ex'),
-            ('music-ex-prismplus-final.json', 'ex'),
-            ('music-ex-deleted.json', 'ex'),
-        ]
+        # the database snapshots the live music-ex.json into music-ex-<version>-final.json every time
+        # the game rolls over, so the set is found rather than listed and a new version needs no edit.
+        # First file wins, so the live one leads and the deleted list trails: a song still in the game
+        # must not be marked deleted because an older file also holds it.
+        data_dir = db.repo_path / 'maimai' / 'data'
+        finals = sorted(path.name for path in data_dir.glob('music-ex-*-final.json'))
+        music_files = [('music-intl.json', 'intl'), ('music-ex.json', 'ex')]
+        music_files += [(name, 'ex') for name in finals] + [('music-ex-deleted.json', 'ex')]
 
         all_music_data = {}
         source_stats = {}

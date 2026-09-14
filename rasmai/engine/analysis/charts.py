@@ -76,9 +76,10 @@ class ChartIndex:
     def playable(self, chart: ChartRef) -> bool:
         if chart.deleted:
             return False
-        # the database's region flag lags behind for the newest charts, so it is only
-        # trusted for versions older than the one the player is playing
-        if self.region == "intl" and not chart.intl and (not self.current_version or chart.version < self.current_version):
+        # the database tracks the Japanese game, which gets a version months before everyone else,
+        # so its region flag lags for charts of the version the player is on and is distrusted there.
+        # Anything newer than their version has simply not reached them yet, flag or no flag.
+        if self.region == "intl" and not chart.intl and (not self.current_version or chart.version != self.current_version):
             return False
         return True
 

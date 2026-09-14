@@ -35,7 +35,7 @@ VERSION_NAMES = {
     "160": "PiNK", "170": "PiNK PLUS", "180": "MURASAKi", "185": "MURASAKi PLUS", "190": "MiLK", "195": "MiLK PLUS",
     "199": "FiNALE", "200": "maimai DX", "205": "DX PLUS", "210": "Splash", "215": "Splash PLUS", "220": "UNiVERSE",
     "225": "UNiVERSE PLUS", "230": "FESTiVAL", "235": "FESTiVAL PLUS", "240": "BUDDiES", "245": "BUDDiES PLUS",
-    "250": "PRiSM", "255": "PRiSM PLUS", "260": "CiRCLE", "265": "CiRCLE PLUS",
+    "250": "PRiSM", "255": "PRiSM PLUS", "260": "CiRCLE", "265": "CiRCLE PLUS", "270": "MAGiCAL",
 }
 
 
