@@ -2,6 +2,7 @@ import { env } from "@/lib/env";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { MoveNotice } from "@/components/MoveNotice";
 import { Pwa } from "@/components/Pwa";
 import { THEME_BOOT } from "@/components/Theme";
 
@@ -75,6 +76,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
       </head>
       <body>
+        <MoveNotice />
         {children}
         <Pwa />
       </body>
