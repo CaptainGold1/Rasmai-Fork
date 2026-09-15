@@ -266,10 +266,10 @@ function PickTables({ picks, onOpen }: { picks: PicksData; onOpen?: OpenChart })
 
         <section className="ledger">
           <div className="ledger-head">
-            <Label info="Charts whose rating sits just below the lowest entry in your best 50. A small improvement on any of these puts it in.">just outside your best 50</Label>
+            <Label info="Charts that would enter your best 50 if you scored on them what you usually score at their level. Where the score you hold is far below that, it is read as one run that went badly rather than a chart you cannot play: Usually is what the model expects from you, and Needs is what it takes to get in.">within reach of your best 50</Label>
           </div>
           {near.length === 0 ? (
-            <Empty>Nothing sits just outside right now.</Empty>
+            <Empty>Nothing is within reach of your best 50 right now.</Empty>
           ) : (
             <table className="tbl compact nojacket">
               <tbody>
@@ -280,6 +280,7 @@ function PickTables({ picks, onOpen }: { picks: PicksData; onOpen?: OpenChart })
                       <Chip difficulty={r.difficulty_type} level={r.level} constant={r.difficulty} type={r.chart_type} />
                     </td>
                     <td className="c-num mono" data-l="now">{pct(r.current_accuracy)}</td>
+                    <td className="c-num mono dim" data-l="usually">{r.expected ? `${r.expected.toFixed(2)}%` : "—"}</td>
                     <td className="c-num mono" data-l="needs">
                       <b>{pct(r.required_accuracy)}</b>
                     </td>
