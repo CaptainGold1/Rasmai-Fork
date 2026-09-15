@@ -47,6 +47,7 @@ def distil(payload: Dict[str, Any]) -> Dict[str, Any]:
         folded = loose_title(title)
         if not folded:
             continue
+        locked = bool(song.get("isLocked"))
         names = [str(a) for a in (song.get("searchAcronyms") or []) if a]
         if names:
             aliases.setdefault(folded, []).extend(n for n in names if n not in aliases.get(folded, []))
@@ -70,6 +71,8 @@ def distil(payload: Dict[str, Any]) -> Dict[str, Any]:
             released = str(sheet.get("releaseDate") or "")
             if released:
                 facts["r"] = released
+            if locked:
+                facts["k"] = 1      # still behind an unlock, so offering it as something to try is a dud
             if facts:
                 sheets[key] = facts
     versions = [(str(v.get("version") or ""), str(v.get("releaseDate") or ""))

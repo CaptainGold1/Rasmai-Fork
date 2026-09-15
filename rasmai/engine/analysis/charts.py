@@ -40,6 +40,7 @@ class ChartRef:
     designer: str = ""       # otoge-db credits standard charts only; dxrating fills the DX ones in
     intl_known: bool = False  # whether a source that lists regions per chart, rather than per song, said so
     released: str = ""       # the day the chart arrived, ISO 8601
+    locked: bool = False     # the song has to be unlocked before it can be picked at all
 
     @property
     def key(self) -> Tuple[str, str, str]:
@@ -212,6 +213,7 @@ def build_chart_index(songs_data: Dict[str, Dict[str, Any]], region: Optional[st
                 bpm=bpm,
                 designer=designer if designer != "-" else "",
                 released=str(facts.get("r", "")),
+                locked=bool(facts.get("k")),
             )
             index.add(chart)
     return index

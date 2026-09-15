@@ -128,7 +128,7 @@ def recommend_unplayed(
 
     picks: List[UnplayedPick] = []
     for key, chart in chart_index.items():
-        if key in played or not chart_index.playable(chart):
+        if key in played or chart.locked or not chart_index.playable(chart):
             continue
         if wanted:
             if chart.difficulty != wanted:

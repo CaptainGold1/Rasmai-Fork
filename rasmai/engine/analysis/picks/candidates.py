@@ -46,7 +46,7 @@ def _unplayed_candidates(
         lower, upper = span         # the player named the constants they want to see; the window is theirs
 
     for key, chart in chart_index.items():
-        if key in played_keys or not chart_index.playable(chart):
+        if key in played_keys or chart.locked or not chart_index.playable(chart):
             continue
         if chart.difficulty not in ("expert", "master", "remaster"):
             continue

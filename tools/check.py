@@ -1179,6 +1179,53 @@ def _search_by_credit():
     return problems
 
 
+@check("a song still behind an unlock is never offered as something to go and play")
+def _locked_songs():
+    from rasmai.engine.analysis import build_chart_index
+    from rasmai.scraping import dxdata
+
+    problems = []
+    # the flag has to survive the trip from dxrating, through the stored copy, into the index
+    distilled = dxdata.distil({"songs": [{
+        "title": "Locked Song", "isLocked": True,
+        "sheets": [{"type": "dx", "difficulty": "master", "level": "13", "internalLevelValue": 13.0,
+                    "noteCounts": {"tap": 400, "hold": 100, "slide": 80, "touch": 20, "break": 40, "total": 640}}],
+    }, {
+        "title": "Open Song", "isLocked": False,
+        "sheets": [{"type": "dx", "difficulty": "master", "level": "13", "internalLevelValue": 13.0,
+                    "noteCounts": {"tap": 400, "hold": 100, "slide": 80, "touch": 20, "break": 40, "total": 640}}],
+    }], "versions": []})
+    sheets = distilled.get("sheets") or {}
+    locked_facts = [key for key, facts in sheets.items() if facts.get("k")]
+    if len(locked_facts) != 1 or not locked_facts[0].startswith("lockedsong|"):
+        problems.append(f"the locked flag did not survive being stored: {sheets}")
+
+    # the index reads dxrating from the stored copy, so it is handed this one for the moment
+    kept = dxdata.cached
+    dxdata.cached = lambda: distilled
+    try:
+        index = build_chart_index({
+            "locked song": {"title": "Locked Song", "artist": "x", "dx_lev_mas_i": "13.0", "dx_lev_mas": "13"},
+            "open song": {"title": "Open Song", "artist": "x", "dx_lev_mas_i": "13.0", "dx_lev_mas": "13"},
+        }, region="intl")
+    finally:
+        dxdata.cached = kept
+    by_title = {chart.title: chart for chart in index.values()}
+    if len(by_title) != 2:
+        problems.append(f"the two test charts did not both reach the index: {sorted(by_title)}")
+    if "Locked Song" in by_title and not by_title["Locked Song"].locked:
+        problems.append("a chart dxrating calls locked did not reach the index as locked")
+    if "Open Song" in by_title and by_title["Open Song"].locked:
+        problems.append("a chart nobody called locked reached the index as locked")
+
+    # and every place that offers a chart the player has not played has to honour it
+    for module in ("rasmai/engine/analysis/picks/candidates.py", "rasmai/engine/analysis/unplayed.py",
+                   "rasmai/engine/analysis/planning/build.py", "rasmai/bot/builders/charts/pick.py"):
+        if "locked" not in (ROOT / module).read_text(encoding="utf-8"):
+            problems.append(f"{module} offers unplayed charts without checking whether they are locked")
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:

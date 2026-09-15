@@ -130,6 +130,8 @@ def unplayed_plan_options(
             continue
         if not chart_index.playable(chart) or not (lower <= chart.constant <= upper):
             continue
+        if chart.locked:
+            continue      # played charts are already gone above, so this one is still behind an unlock
         is_new = bool(current_version) and chart.version == current_version
         local_sigma = max(global_sigma, profile.sigma_at(chart.constant))
         expected = profile.expected_for(chart.constant, chart.difficulty) - 0.35 - 0.4 * local_sigma

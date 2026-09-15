@@ -24,7 +24,8 @@ async def build_random(cached: CachedAnalysis, owner_id: int, level: Optional[st
         if ref.difficulty in DIFFICULTY_ORDER and a.chart_index.playable(ref)
         and (not level or str(ref.level).strip() == level)
         and (not difficulty or ref.difficulty == difficulty)
-        and (not unplayed or song_for_chart(loose_map, ref) is None)
+        # a random pick is something to go and play, so a song still behind an unlock is no use
+        and (not unplayed or (song_for_chart(loose_map, ref) is None and not ref.locked))
     ]
     embed = discord.Embed(color=discord.Color.from_rgb(92, 211, 232))
     embed.set_author(name=a.player.name)
