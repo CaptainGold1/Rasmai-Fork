@@ -1092,6 +1092,24 @@ def _traits_are_skills():
             problems.append(f"{name}() dropped the skills along with the rest")
     if "designer" not in NOT_A_SKILL:
         problems.append("who charted a song is not a skill and should never be named as a trait")
+
+    # the site builds the leaning and level lists itself rather than taking them from the bot, so it
+    # keeps its own copy of this rule. Two copies of one rule is how the designer traits came back.
+    import re
+    source = (ROOT / "web" / "components" / "dash" / "Traits.tsx").read_text(encoding="utf-8")
+    found = re.search(r"const NOT_A_SKILL = new Set\(\[([^\]]*)\]\)", source)
+    if not found:
+        problems.append("the site no longer names the dimensions it refuses to call a trait")
+    else:
+        theirs = set(re.findall(r'"([a-z]+)"', found.group(1)))
+        if theirs != NOT_A_SKILL:
+            problems.append(f"the site refuses {sorted(theirs)} where the bot refuses {sorted(NOT_A_SKILL)}")
+    # and the lists it builds have to be built from the filtered set, not the raw axes
+    defines = [line for line in source.splitlines() if line.strip().startswith("const all =")]
+    if not defines:
+        problems.append("the site no longer says where its trait lists come from")
+    elif "NOT_A_SKILL" not in defines[0]:
+        problems.append("the site builds its trait lists from every axis, rule or no rule")
     return problems
 
 

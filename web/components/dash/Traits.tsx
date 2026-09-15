@@ -2,7 +2,10 @@ import { useMemo } from "react";
 import type { JudgementProfileData, Trait, TraitPractice } from "./api";
 import { Empty, Info, Jacket, Label, TitleLink, type OpenChart } from "./bits";
 
-const NOT_ON_RADAR = new Set(["type", "era", "genre", "designer"]);
+// what a chart is rather than what it asks of the hands. The bot measures these, because a
+// charter's habits soak up differences that would otherwise be blamed on a pattern, but a trait
+// is only worth naming if it is a skill you can work on. Kept in step with NOT_A_SKILL in tags.py.
+const NOT_A_SKILL = new Set(["type", "era", "genre", "designer"]);
 const LEAN = 0.3;
 const CONFIRM_CHARTS = 12;
 const TIER = { basic: "BAS", advanced: "ADV", expert: "EXP", master: "MAS", remaster: "Re:M" } as Record<string, string>;
@@ -17,9 +20,9 @@ const isEven = (a: Trait) => !a.verified && !a.leaning && a.count >= CONFIRM_CHA
 /** Pick the axes the wheel is drawn on: confirmed and leaning traits about play, both halves so the shape has contrast.
  *  A wheel with fewer than six is rounded out with the groups the player plays evenly, which sit on the middle ring. */
 export function radarAxes(axes: Trait[], limit = 8): Axis[] {
-  const pool: Axis[] = axes.filter((a) => (a.verified || a.leaning) && !NOT_ON_RADAR.has(a.dimension));
+  const pool: Axis[] = axes.filter((a) => (a.verified || a.leaning) && !NOT_A_SKILL.has(a.dimension));
   if (pool.length < RADAR_FILL) {
-    const fillers = axes.filter((a) => isEven(a) && !NOT_ON_RADAR.has(a.dimension)).sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset));
+    const fillers = axes.filter((a) => isEven(a) && !NOT_A_SKILL.has(a.dimension)).sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset));
     pool.push(...fillers.slice(0, Math.max(0, RADAR_FILL - pool.length)).map((a) => ({ ...a, filler: true })));
     if (pool.length < RADAR_MIN) return [];
   }
@@ -200,7 +203,9 @@ function Practice({ items, onOpen }: { items: TraitPractice[]; onOpen?: OpenChar
 }
 
 export function Traits({ traits, axes, charts, practice, onOpen }: { traits: Trait[]; axes: Trait[]; charts: number; practice?: TraitPractice[]; onOpen?: OpenChart }) {
-  const all = axes ?? [];
+  // the confirmed list arrives already filtered; the leaning and level ones are built here, so
+  // the same rule has to be applied before anything is counted or drawn
+  const all = useMemo(() => (axes ?? []).filter((a) => !NOT_A_SKILL.has(a.dimension)), [axes]);
   const wheel = useMemo(() => radarAxes(all), [all]);
   const confirmed = traits.filter((t) => t.verified !== false);
   const leaning = all.filter(isLean);
