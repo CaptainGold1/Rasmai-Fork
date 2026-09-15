@@ -636,3 +636,12 @@ html[data-standalone] .dash .ident { margin-top: 16px; }
 :root[data-theme="dark"] .curve-mark.reach, :root[data-theme="dark"] .curve-mark-label.reach { stroke: var(--pink); fill: var(--pink); }
 :root[data-theme="dark"] .curve-dot { opacity: 0.5; }
 .masthead-tag { margin-left: auto; font-size: 12px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 30vw; }
+
+/* one control under the tabs: the picture the matching Discord command draws, saved as a file */
+.tab-tools { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin: 10px 0 -4px; }
+.save-image { font-family: var(--font-mono), monospace; font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+              color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 999px;
+              padding: 5px 14px; cursor: pointer; }
+.save-image:hover:not(:disabled) { color: var(--ink); border-color: var(--pink-edge); }
+.save-image:disabled { opacity: 0.6; cursor: progress; }
+.save-image:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }

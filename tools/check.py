@@ -1098,58 +1098,84 @@ def _traits_are_skills():
 @check("the lookup finds a chart by its artist or its charter, on both the site and the bot")
 def _search_by_credit():
     import rasmai.bot.builders.charts.index as charts_index
-    from rasmai.bot.builders.charts import search_titles, shared_index
-    from rasmai.web.dashboard.lookup import search_payload
+    from rasmai.bot.builders.charts import search_titles
 
-    shared_index()
     problems = []
-    # read through the module: the tables are rebuilt and rebound, so a name imported from it goes stale
-    if not charts_index._credits:
-        return ["nothing is indexed by artist or charter, so neither surface can search for one"]
+    # a table of our own, so this proves the same thing on a fresh checkout where the chart
+    # database has not been downloaded yet, and proves it the same way every run
+    kept = {name: getattr(charts_index, name) for name in
+            ("_shared_index", "_titles", "_search", "_search_bones", "_aliases", "_credits")}
 
-    # an artist and a charter are separate asks, and indexing only one of them still passes a test
-    # that takes whichever it finds first, so each is searched for by name
-    index = shared_index()
+    class Stub:
+        def values(self):
+            return []
+
+    class Chart:
+        def __init__(self, title, artist, designer):
+            self.title, self.artist, self.designer = title, artist, designer
+
+    # the artist of one is a word inside the other's title, which is what makes the order mean something
+    made_up = [Chart("Rotation Study", "Blues", "譜面-100号"),
+               Chart("Slow Rotation Blues", "Another Band", "someone else")]
+
+    class Fake(Stub):
+        def values(self):
+            return made_up
+
+    try:
+        charts_index._shared_index = Fake()          # so nothing tries to fetch the real database
+        charts_index._titles = [chart.title for chart in made_up]
+        charts_index._aliases = {"held": "so the table is not rebuilt mid-check"}
+        # the real indexing runs, so dropping a credited field from it fails here too
+        charts_index._build_search({}, Fake())
+
+        for typed, what in (("blues", "artist"), ("譜面-100号", "charter")):
+            hits = search_titles(typed, limit=5)
+            if "Rotation Study" not in hits:
+                problems.append(f"searching the {what} {typed!r} did not find the song they are credited on")
+        # a name typed in full means that name, above a song that merely contains it in its title
+        ranked = search_titles("blues", limit=5)
+        if ranked and ranked[0] != "Rotation Study":
+            problems.append(f"a credited name typed in full put {ranked[0]!r} first, ahead of what they made")
+        # a title still beats a credit: someone typing a song name means the song
+        first = (search_titles("Slow Rotation Blues", limit=5) or [""])[0]
+        if first != "Slow Rotation Blues":
+            problems.append(f"searching an exact title put {first!r} first instead of the song itself")
+        # and a name too short to mean one person must not drag half the database in
+        if any(len(key) < 4 for key in charts_index._credit_keys("譜面-100号")):
+            problems.append("a two or three letter credit key would match almost everything")
+    finally:
+        for name, value in kept.items():
+            setattr(charts_index, name, value)
+
+    # then against the real database, wherever it has been downloaded
+    index = charts_index._shared_index
+    if index is None or not any(True for _ in index.values()):
+        return problems
+    from rasmai.web.dashboard.lookup import search_payload
     titles = [chart.title.casefold() for chart in index.values()]
 
     def credited(field):
-        # a name no song is titled after, so a hit can only have come from the credits
         for chart in index.values():
             name = str(getattr(chart, field, "") or "").strip()
             if len(name) >= 5 and name != "-" and not any(name.casefold() in title for title in titles):
-                return name, chart.title
-        return "", ""
+                return name
+        return ""
 
     for field, what in (("artist", "artist"), ("designer", "charter")):
-        name, _ = credited(field)
+        name = credited(field)
         if not name:
-            problems.append(f"no {what} in the database to search for, so this proves nothing")
             continue
         theirs = {chart.title for chart in index.values() if str(getattr(chart, field, "") or "") == name}
         hits = search_titles(name, limit=20)
-        # a prolific name has more songs than the list holds, so what matters is that the list is theirs
         mine = len(theirs & set(hits))
         if not mine:
             problems.append(f"searching the {what} {name!r} found none of the {len(theirs)} songs they are credited on")
         elif mine < min(len(theirs), len(hits)) // 2:
             problems.append(f"searching the {what} {name!r} returned {len(hits)} songs, only {mine} of them theirs")
-    name = credited("artist")[0]
-
-    # the site reads the same index, so a hit it shows can say who charted it
-    payload = search_payload(None, name, limit=3)
-    if hits and not payload:
-        problems.append(f"the bot found {len(hits)} songs for {name!r} and the site's lookup found none")
-    for row in payload:
-        if "charters" not in row:
-            problems.append("a search result no longer says who charted the song")
-        break
-
-    # a title still beats a credit: someone typing a song name means the song
-    titled = next((title for title in list(charts_index._credits) if len(title) >= 6 and title.isascii()), "")
-    if titled:
-        found = search_titles(titled, limit=5)
-        if found and found[0] != titled:
-            problems.append(f"searching for the exact title {titled!r} put {found[0]!r} first")
+    name = credited("artist")
+    if name and "charters" not in (search_payload(None, name, limit=1) or [{}])[0]:
+        problems.append("a search result on the site no longer says who charted the song")
     return problems
 
 

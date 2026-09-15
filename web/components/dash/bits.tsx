@@ -156,3 +156,56 @@ export function TitleLink({ title, type, difficulty, onOpen }: { title: string; 
     </button>
   );
 }
+
+export type ImageKind = "analyze" | "profile" | "new" | "traits" | "progress" | "best50" | "recent";
+
+const IMAGE_LABEL: Record<ImageKind, string> = {
+  analyze: "what to play",
+  profile: "play profile",
+  new: "new charts",
+  traits: "traits",
+  progress: "rating over time",
+  best50: "best 50",
+  recent: "recent plays",
+};
+
+/** Saves the picture the matching Discord command draws. Rendering takes a moment, so it says so. */
+export function SaveImage({ kind }: { kind: ImageKind }) {
+  const [state, setState] = useState<"" | "busy" | "empty" | "failed">("");
+
+  const save = async () => {
+    setState("busy");
+    try {
+      const answer = await fetch(`/api/me/image?kind=${encodeURIComponent(kind)}`, { credentials: "same-origin" });
+      // 404 here means the bot had nothing to draw yet, which is not the same as a failure
+      if (answer.status === 404) {
+        setState("empty");
+        return;
+      }
+      if (!answer.ok) throw new Error(String(answer.status));
+      const blob = await answer.blob();
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = href;
+      link.download = `rasmai-${kind}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      // the browser needs the address to outlive the click, not the call
+      setTimeout(() => URL.revokeObjectURL(href), 10_000);
+      setState("");
+    } catch {
+      setState("failed");
+    }
+  };
+
+  return (
+    <button type="button" className="save-image" onClick={save} disabled={state === "busy"}
+            title={`Save the ${IMAGE_LABEL[kind]} image, the one the bot posts in Discord`}>
+      {state === "busy" ? "drawing…"
+        : state === "empty" ? "nothing to draw yet"
+        : state === "failed" ? "could not draw it"
+        : `save ${IMAGE_LABEL[kind]}`}
+    </button>
+  );
+}

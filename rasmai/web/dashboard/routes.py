@@ -128,6 +128,12 @@ def handle_get(handler: Any, path: str, query: Dict[str, List[str]], user: Dict[
             return True
         handler._send_json(200, detail)
         return True
+    if path == "/internal/me/image":
+        # the same picture the matching command attaches, drawn by the same builder
+        from rasmai.web.dashboard.files import image_export
+        image_export(handler, cached, (query.get("kind") or [""])[0].strip())
+        return True
+
     if path == "/internal/me/export":
         if cached is None:
             handler._send_json(404, {"ok": False, "error": "no_snapshot"})

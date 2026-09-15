@@ -18,6 +18,17 @@ import { Frame } from "./Frame";
 import { OverviewTab } from "./OverviewTab";
 import { Recent } from "./Recent";
 import { type Tab, TABS, Tabs, RefreshBar, tabsFor } from "./Tabs";
+import { SaveImage, type ImageKind } from "./bits";
+
+// the tabs the bot already draws a picture of, and which of its commands draws it
+const IMAGE_FOR: Partial<Record<Tab, ImageKind[]>> = {
+  overview: ["profile", "progress"],
+  picks: ["analyze"],
+  new: ["new"],
+  traits: ["traits"],
+  best50: ["best50"],
+  recent: ["recent"],
+};
 
 export function Dash() {
   const [me, setMe] = useState<Overview | null>(null);
@@ -273,6 +284,14 @@ export function Dash() {
       </section>
 
       <Tabs current={tab} onPick={pick} admin={me.admin} />
+
+      {IMAGE_FOR[tab] && (
+        <div className="tab-tools">
+          {IMAGE_FOR[tab]!.map((kind) => (
+            <SaveImage key={kind} kind={kind} />
+          ))}
+        </div>
+      )}
 
       {refresh?.running && <RefreshBar status={refresh} />}
 
