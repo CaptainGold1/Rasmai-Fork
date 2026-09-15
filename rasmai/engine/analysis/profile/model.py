@@ -52,6 +52,10 @@ class PlayProfile:
     active_days: int = 0
     new_version_share: float = 0.0    # fraction of recent plays on current-version charts
 
+    # what the chart database says about the charts they choose, rather than how they score:
+    # how old those charts are, what re-rating has done to their best 50, notes actually hit
+    habits: Dict[str, Any] = field(default_factory=dict)
+
     # per half-level bucket: (typical good score, number of charts, best score)
     bucket_stats: Dict[float, Tuple[float, int, float]] = field(default_factory=dict)
     dense_ceiling: float = 0.0        # hardest level with enough charts to trust the curve
@@ -391,6 +395,7 @@ class PlayProfile:
             "favouriteChartType": favourite_type,
             "favouriteGenre": favourite_genre,
             "newVersionShare": round(self.new_version_share, 2),
+            "habits": dict(self.habits),
             "activeDays": self.active_days,
             "sampleSize": self.sample_size,
             "playCountsKnown": sum(1 for v in self.play_counts.values() if v >= 0),

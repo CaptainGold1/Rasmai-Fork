@@ -337,6 +337,19 @@ def profile_poster_html(summary: Dict[str, Any], profile: Any, songs: Sequence[A
             scale=float(calibration.get("sigmaScale", 1.0)), shift=float(calibration.get("shift", 0.0)),
         )
 
+    habits = p.get("habits") or {}
+    age = habits.get("age") or {}
+    habits_tile = ""
+    if age.get("plays", 0) >= 10:
+        rerates, notes = habits.get("rerates") or {}, habits.get("notes") or {}
+        habits_tile = render(
+            "profile-habits",
+            age=float(age.get("medianYears", 0)), fresh=float(age.get("freshShare", 0)) * 100,
+            rerates=(f" &middot; re-rating has moved your best 50 by <b>{int(rerates['rating']):+d}</b> "
+                     f"across {int(rerates['charts'])} charts" if rerates.get("charts") else ""),
+            notes=(f" &middot; {int(notes['notes']):,} notes hit" if notes.get("notes") else ""),
+        )
+
     open_slots = int(b.get("newSlotsOpen", 0)) + int(b.get("oldSlotsOpen", 0))
     legend = render_each("legend-swatch", [
         {"ink": ink, "label": label} for label, ink in
@@ -371,6 +384,7 @@ def profile_poster_html(summary: Dict[str, Any], profile: Any, songs: Sequence[A
         genre_bars=bars(getattr(profile, "genre_bias", {}) or {}),
         trait_bars=trait_bars(p.get("traits") or []),
         model_tile=model_tile,
+        habits_tile=habits_tile,
     )
     counters = [
         ("FC", f"{p.get('fcRate', 0) * 100:.0f}%"),

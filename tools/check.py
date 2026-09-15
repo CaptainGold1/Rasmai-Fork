@@ -1226,6 +1226,77 @@ def _locked_songs():
     return problems
 
 
+@check("what the chart database says about how someone picks charts")
+def _play_habits():
+    from rasmai.engine.insights import habits as H
+    from rasmai.scraping import dxdata
+
+    class Chart:
+        def __init__(self, title, released, notes=700, constant=13.0, difficulty="master"):
+            self.title, self.released, self.notes = title, released, notes
+            self.constant, self.difficulty, self.chart_type = constant, difficulty, "dx"
+
+    class Index:
+        def __init__(self, charts):
+            self.charts = charts
+
+        def get(self, key, level=None):
+            return self.charts.get(key)
+
+    problems = []
+    key = ("old song", "dx", "master")
+    index = Index({key: Chart("Old Song", "2020-01-01")})
+    plays = [{"songName": "Old Song", "musicType": "dx", "difficulty": "master",
+              "playedAt": "2026-01-01 12:00:00"} for _ in range(8)]
+    age = H.chart_age(plays, index)
+    if round(age.get("medianYears", 0)) != 6:
+        problems.append(f"a chart released in 2020 played in 2026 should read about six years old: {age}")
+    if age.get("freshShare") != 0.0:
+        problems.append(f"none of those plays were on a chart under a year old: {age}")
+    if H.chart_age(plays[:3], index):
+        problems.append("three plays is not enough to say how someone picks charts")
+
+    # the history is keyed by version name, and those do not sort into the order they came out in:
+    # comparing against the wrong end of it reports the re-rate backwards
+    stored = {"constants": {"resung|dx|master": {"UNiVERSE": 13.5, "maimaiでらっくす PLUS": 13.0}},
+              "versions": [["maimaiでらっくす PLUS", "2020-01-23"], ["UNiVERSE", "2021-09-16"]]}
+    kept = dxdata.cached
+    dxdata.cached = lambda: stored
+
+    class Song:
+        name, chart_type, difficulty_type, accuracy = "Re-sung", "dx", "master", 100.5
+
+    class Pool:
+        def __init__(self, keys):
+            self.in_pool = set(keys)
+
+    class Best50:
+        def __init__(self, keys):
+            self.new_pool, self.old_pool = Pool(keys), Pool([])
+
+    try:
+        song_key = ("re-sung", "dx", "master")
+        moved = H.rerate_effect([Song()], Index({song_key: Chart("Re-sung", "2020-01-23", constant=13.5)}),
+                                Best50([song_key]))
+        if moved.get("charts") != 1:
+            problems.append(f"a re-rated chart in the best 50 should be counted: {moved}")
+        if moved.get("rating", 0) <= 0:
+            problems.append(f"a constant revised from 13.0 up to 13.5 should have added rating, not taken it: {moved}")
+        # a chart nobody re-rated, and one that is re-rated but outside the pools, both count for nothing
+        if H.rerate_effect([Song()], Index({song_key: Chart("Re-sung", "2020-01-23", constant=13.5)}), Best50([])):
+            problems.append("a chart outside the best 50 changed nothing and should not be counted")
+    finally:
+        dxdata.cached = kept
+
+    counts = {key: 4}
+    struck = H.notes_struck(Index({key: Chart("Old Song", "2020-01-01", notes=700)}), counts)
+    if struck.get("notes") != 2800:
+        problems.append(f"four clears of a 700-note chart is 2800 notes: {struck}")
+    if H.notes_struck(Index({key: Chart("Old Song", "2020-01-01", notes=700)}), {key: -1}):
+        problems.append("a chart whose play count is unknown should not be counted as played")
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:

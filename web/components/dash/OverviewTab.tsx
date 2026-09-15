@@ -29,6 +29,7 @@ export function OverviewTab({ me, charts, chartsError, onRetry }: { me: Overview
     return { upper: upper.length, ranks, fc, fcPlus, ap, fsPlus, levels };
   }, [charts]);
   const prof = me.analysis?.profile;
+  const habits = prof?.habits;
   const b50 = me.analysis?.best50;
   return (
     <>
@@ -46,7 +47,7 @@ export function OverviewTab({ me, charts, chartsError, onRetry }: { me: Overview
       <div className="two-up">
         <section className="ledger">
           <div className="ledger-head">
-            <Label info="Where your scores put you. Comfortable up to is the highest chart constant you still score consistently at, S expected up to is where a first pass should still land an S, and hardest S is the toughest chart you hold an S on. Reachable from your picks is what the What to play targets add up to if every one lands.">how you play</Label>
+            <Label info="Where your scores put you. Comfortable up to is the highest chart constant you still score consistently at, S expected up to is where a first pass should still land an S, and hardest S is the toughest chart you hold an S on. Reachable from your picks is what the What to play targets add up to if every one lands. Charts you pick is how old they were when you played them, so it says whether you chase new releases or work the back catalogue. From re-rating is what your best 50 owes to constants being revised rather than to you playing.">how you play</Label>
           </div>
           <dl className="facts">
             <dt>comfortable up to</dt>
@@ -55,6 +56,29 @@ export function OverviewTab({ me, charts, chartsError, onRetry }: { me: Overview
             <dd className="mono">{prof ? prof.reachConstant.toFixed(1) : "—"}</dd>
             <dt>hardest S</dt>
             <dd className="mono">{prof ? prof.hardestS.toFixed(1) : "—"}</dd>
+            {habits?.age ? (
+              <>
+                <dt>charts you pick</dt>
+                <dd className="mono">
+                  {habits.age.medianYears.toFixed(1)} yr old · {Math.round(habits.age.freshShare * 100)}% under a year
+                </dd>
+              </>
+            ) : null}
+            {habits?.rerates ? (
+              <>
+                <dt>from re-rating</dt>
+                <dd className="mono">
+                  {habits.rerates.rating >= 0 ? "+" : ""}
+                  {habits.rerates.rating} over {habits.rerates.charts} charts
+                </dd>
+              </>
+            ) : null}
+            {habits?.notes ? (
+              <>
+                <dt>notes hit</dt>
+                <dd className="mono">{num(habits.notes.notes)}</dd>
+              </>
+            ) : null}
             <dt>charts scored</dt>
             <dd className="mono">{num(me.snapshot?.charts)}</dd>
             <dt>expert and up</dt>

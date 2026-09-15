@@ -4,6 +4,7 @@ import logging
 
 from rasmai.engine.analysis import ChartIndex, PlayProfile, ScoredCandidate
 from rasmai.engine import analysis
+from rasmai.engine import insights
 from rasmai.config import get_maimai_base_url
 from rasmai.storage.models import PlayerInfo, Recommendation, SongInfo
 from rasmai.scraping.otoge import CachedOtogeDB
@@ -145,6 +146,9 @@ class MaimaiRatingAnalyzer(ScorePages, AreaPages, PlaylogPages, ProfilePages):
             play_counts=self.play_counts, recorded_plays=self.recorded_plays, judgements=self.judgements,
         )
         self.best50 = analysis.build_best50(self.songs)
+        # needs the pools, so it is filled once they exist rather than inside the profile build
+        self.play_profile.habits = insights.play_habits(
+            self.songs, self.recent_songs, chart_index, self.play_counts, self.best50)
 
         print(
             f"Analyzing {len(self.songs)} charts "

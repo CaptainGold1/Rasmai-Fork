@@ -50,6 +50,11 @@ export type Overview = {
       hardestS: number;
       playedCeiling?: number;
       sampleSize?: number;
+      habits?: {
+        age?: { plays: number; medianYears: number; freshShare: number; newestQuarterYears: number };
+        rerates?: { charts: number; rating: number };
+        notes?: { notes: number; charts: number };
+      };
       traits?: Trait[];
       traitAxes?: Trait[];
       [key: string]: unknown;

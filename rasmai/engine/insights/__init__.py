@@ -47,3 +47,9 @@ from rasmai.engine.insights.session import (  # noqa: F401
     Session,
     build_session,
 )
+from rasmai.engine.insights.habits import (  # noqa: F401
+    play_habits,
+    chart_age,
+    rerate_effect,
+    notes_struck,
+)

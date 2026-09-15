@@ -292,6 +292,7 @@
       <div class="tile"><div class="k">Recent</div><div class="v">{recent_count}<small>plays</small></div><div class="s">{active_days} active day(s) &middot; {play_counts_known} play counts known</div></div>
       <div class="tile wide"><div class="k">Best-50</div><div class="v">{best50}<small>{new_total} new + {old_total} old</small></div>
         <div class="s">cutoffs {new_cutoff} / {old_cutoff}{slots}</div></div>
+      {habits_tile}
       {model_tile}
     </div>
     <div class="section-label">Where you lose and gain points &middot; vs your own curve, in points</div>
@@ -305,6 +306,11 @@
 <div class="tile wide"><div class="k">Model check &middot; {plays} recorded plays</div>
   <div class="v">{coverage:.0f}%<small>of plays inside the predicted range</small></div>
   <div class="s">new-best odds said {predicted:.0f}%, {actual:.0f}% happened &middot; spread scaled &times;{scale:.2f} &middot; centre shifted {shift:+.2f}</div></div>
+
+<!-- @profile-habits -->  <!-- what the chart database says about the charts they choose -->
+<div class="tile wide"><div class="k">How you pick</div>
+  <div class="v">{age:.1f} yr<small>median age of the charts you play</small></div>
+  <div class="s">{fresh:.0f}% were less than a year old{rerates}{notes}</div></div>
 
 <!-- @profile-slots -->
  &middot; <b style="color:#f0c04a">{slots} slots empty</b>
