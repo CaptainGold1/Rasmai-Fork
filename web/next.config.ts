@@ -40,6 +40,18 @@ const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
   poweredByHeader: false,
   images: { unoptimized: true },
+  // www goes to the bare domain with the path intact. The host is read off the request rather than
+  // named here, so this follows the domain wherever it moves and stays out of the way in development.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www\.(?<bare>.+)" }],
+        destination: "https://:bare/:path*",
+        statusCode: 301,
+      },
+    ];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: SECURITY_HEADERS },
