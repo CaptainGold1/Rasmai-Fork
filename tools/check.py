@@ -1297,6 +1297,46 @@ def _play_habits():
     return problems
 
 
+@check("a prediction never sits above a score the player has already proved")
+def _no_free_improvement():
+    from rasmai.engine.analysis import rating
+    from rasmai.engine.analysis.profile.model import PlayProfile
+
+    problems = []
+    if rating.BEST_HEADROOM > 0.0:
+        problems.append(f"the centre is allowed {rating.BEST_HEADROOM} sigmas above the player's own best; "
+                        f"measured over real runs, assuming improvement without evidence costs accuracy")
+
+    profile = PlayProfile()
+    profile.sample_size = 200
+    profile.intercept, profile.slope = 101.0, -0.3
+    profile.consistency, profile.run_consistency = 0.8, 0.5
+    key = ("a song", "dx", "master")
+    curve = profile.expected_for(13.0, "master")
+
+    # someone a little under their curve: the model may lean towards the curve, never past the best.
+    # Further under than DROPPED_BEST_GAP is a different case, handled as an abandoned run.
+    under = curve - 1.0
+    low, _sigma = profile.chart_expectation(key, 13.0, under)
+    if low > under + 1e-6:
+        problems.append(f"predicted {low:.2f} on a chart whose best is {under:.2f}, above what they have proved")
+
+    # and someone whose best is above their curve keeps it, rather than being dragged back down
+    high_best = curve + 2.0
+    high, _sigma = profile.chart_expectation(key, 13.0, high_best)
+    if high > high_best + 1e-6:
+        problems.append(f"predicted {high:.2f} above a proved {high_best:.2f}")
+    if high < high_best - 1.5:
+        problems.append(f"predicted {high:.2f} well under a proved {high_best:.2f}: a good chart should stay good")
+
+    # a chart with a rising history is still allowed to be lifted, because that improvement is evidence
+    profile.history = {key: [curve - 2.0, curve - 1.0, curve]}
+    lifted, _sigma = profile.chart_expectation(key, 13.0, curve)
+    if lifted <= curve:
+        problems.append("a chart the player is measurably improving on should still be allowed to rise")
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:
