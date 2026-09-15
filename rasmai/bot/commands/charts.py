@@ -50,7 +50,7 @@ async def _lookup(interaction: discord.Interaction, what: str, build) -> None:
 
 @bot.tree.command(name="chart", description="One chart: your score, the prediction and what each rank is worth")
 @light_cooldown
-@app_commands.describe(name="Song title (start typing for suggestions)", difficulty="Open this difficulty (default: the chart that matters most)")
+@app_commands.describe(name="Song title, artist or charter (start typing for suggestions)", difficulty="Open this difficulty (default: the chart that matters most)")
 @app_commands.choices(difficulty=DIFFICULTY_CHOICES[:5])
 @app_commands.autocomplete(name=song_autocomplete)
 async def chart(interaction: discord.Interaction, name: str, difficulty: Optional[app_commands.Choice[str]] = None):

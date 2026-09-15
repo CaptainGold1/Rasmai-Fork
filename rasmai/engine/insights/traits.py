@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from rasmai.engine.analysis import ChartIndex, ChartRef, PlayProfile
-from rasmai.engine.insights.tags import NOT_ON_RADAR, _is_technique, chart_traits
+from rasmai.engine.insights.tags import NOT_A_SKILL, _is_technique, chart_traits
 
 
 TRAIT_MIN_CHARTS = 8         # a group needs this many distinct charts before it is measured at all
@@ -223,7 +223,8 @@ def notable(axes: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
     :type axes: Sequence[Dict[str, Any]]
     :rtype: List[Dict[str, Any]]
     """
-    return [axis for axis in axes if axis.get("verified") and abs(float(axis["offset"])) >= TRAIT_THRESHOLD]
+    return [axis for axis in axes if axis.get("verified") and abs(float(axis["offset"])) >= TRAIT_THRESHOLD
+            and axis["dimension"] not in NOT_A_SKILL]
 
 
 def leaning(axes: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -233,7 +234,8 @@ def leaning(axes: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
     :type axes: Sequence[Dict[str, Any]]
     :rtype: List[Dict[str, Any]]
     """
-    return sorted([axis for axis in axes if axis.get("leaning") and not axis.get("verified")], key=lambda axis: float(axis["offset"]))
+    return sorted([axis for axis in axes if axis.get("leaning") and not axis.get("verified")
+                   and axis["dimension"] not in NOT_A_SKILL], key=lambda axis: float(axis["offset"]))
 
 
 def even(axes: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -244,7 +246,8 @@ def even(axes: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
     :rtype: List[Dict[str, Any]]
     """
     return sorted([axis for axis in axes if not axis.get("verified") and not axis.get("leaning")
-                   and int(axis.get("count") or 0) >= TRAIT_CONFIRM_CHARTS and abs(float(axis["offset"])) < TRAIT_LEAN_OFFSET],
+                   and int(axis.get("count") or 0) >= TRAIT_CONFIRM_CHARTS and abs(float(axis["offset"])) < TRAIT_LEAN_OFFSET
+                   and axis["dimension"] not in NOT_A_SKILL],
                   key=lambda axis: -int(axis["count"]))
 
 
@@ -302,10 +305,10 @@ def radar_axes(axes: Sequence[Dict[str, Any]], limit: int = 8, tentative: bool =
     :type tentative: bool
     :rtype: List[Dict[str, Any]]
     """
-    pool = [axis for axis in axes if (axis.get("verified") or (tentative and axis.get("leaning"))) and axis["dimension"] not in NOT_ON_RADAR]
+    pool = [axis for axis in axes if (axis.get("verified") or (tentative and axis.get("leaning"))) and axis["dimension"] not in NOT_A_SKILL]
     if tentative and len(pool) < RADAR_FILL:
         # a wheel with two or three points is barely a shape: the groups the player plays evenly sit on the middle ring and round it out
-        fillers = [axis for axis in even(axes) if axis["dimension"] not in NOT_ON_RADAR]
+        fillers = [axis for axis in even(axes) if axis["dimension"] not in NOT_A_SKILL]
         fillers.sort(key=lambda axis: -abs(float(axis["offset"])))
         pool += [{**axis, "filler": True} for axis in fillers[:max(0, RADAR_FILL - len(pool))]]
     if len(pool) < RADAR_MIN:

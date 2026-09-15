@@ -286,6 +286,7 @@ export type SearchHit = {
   artist: string;
   genre: string;
   cover: string;
+  charters: string[];
   charts: { chart_type: string; difficulty: string; level: string; constant: number; played: boolean; accuracy: number | null; rank: string }[];
 };
 

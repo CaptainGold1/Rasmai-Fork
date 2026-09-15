@@ -58,7 +58,7 @@ def _build() -> None:
     db = CachedOtogeDB()
     index = analysis.build_chart_index(db.songs_data)
     _titles = sorted({c.title for c in index.values()}, key=str.casefold)
-    _build_search(db.songs_data)
+    _build_search(db.songs_data, index)
     records: Dict[str, Dict[str, Any]] = {}
     for record in db.songs_data.values():
         records.setdefault(str(record.get("title", "")), record)
@@ -121,8 +121,30 @@ _aliases: Dict[str, str] = {}                      # database title -> the wiki'
 _songs_data_ref: Dict[str, Dict[str, Any]] = {}
 
 
-def _build_search(songs_data: Dict[str, Dict[str, Any]]) -> None:
-    global _search, _search_bones, _aliases, _songs_data_ref
+# title -> the people credited on it: the artist, and every charter across its difficulties. Kept
+# apart from the title keys so a song never loses its place to something merely charted by a name
+# that reads like the query.
+_credits: Dict[str, Tuple[str, ...]] = {}
+
+
+def _credit_keys(*names: str) -> set:
+    """The forms a credited name can be typed as: the name itself, and its romaji skeleton.
+
+    :rtype: set
+    """
+    keys = set()
+    for name in names:
+        name = str(name or "").strip()
+        if not name or name == "-":
+            continue
+        keys.update({name.casefold(), loose_title(name), skeleton(name)})
+    # a short skeleton ("100" out of 譜面-100号) would match half the database, so only keys with
+    # enough in them to mean one person are kept
+    return {key for key in keys if len(key) >= 4}
+
+
+def _build_search(songs_data: Dict[str, Dict[str, Any]], index: Optional[ChartIndex] = None) -> None:
+    global _search, _search_bones, _aliases, _songs_data_ref, _credits
     _songs_data_ref = songs_data
     readings: Dict[str, str] = {}
     for record in songs_data.values():
@@ -159,6 +181,10 @@ def _build_search(songs_data: Dict[str, Dict[str, Any]]) -> None:
     _search = table
     _search_bones = bones_table
     _aliases = aliases
+    credits: Dict[str, set] = {}
+    for chart in (index.values() if index is not None else ()):
+        credits.setdefault(chart.title, set()).update(_credit_keys(chart.artist, chart.designer))
+    _credits = {title: tuple(sorted(keys)) for title, keys in credits.items() if keys}
 
 
 def song_alias(title: str) -> str:
@@ -174,7 +200,9 @@ def song_alias(title: str) -> str:
 def _refresh_aliases() -> None:
     """Rebuild the search table once the wiki's song list arrives after the index was built."""
     if not _aliases and WIKI_VIDEOS and _songs_data_ref and wiki.cached_titles():
-        _build_search(_songs_data_ref)
+        # the index goes back in too: it carries the artists and charters, and rebuilding without
+        # it would drop every credit the moment the wiki's names arrived
+        _build_search(_songs_data_ref, _shared_index)
 
 
 def search_titles(query: str, limit: int = 25) -> List[str]:
@@ -206,7 +234,22 @@ def search_titles(query: str, limit: int = 25) -> List[str]:
             starts.append(title)
         elif folded in title.casefold() or any(loose in k for k in keys if len(loose) >= 3) or any(bones in k for k in keys if len(bones) >= 4):
             contains.append(title)
-    ranked = exact + sorted(starts, key=len) + sorted(contains, key=len)
+    # whoever wrote or charted it. Somebody typing a charter's name in full means that charter, so
+    # those land above songs that merely contain the query somewhere in their title; a partial match
+    # is a guess and goes last, where it cannot cost a song its place.
+    named: List[str] = []
+    credited: List[str] = []
+    if len(folded) >= 2:
+        placed = set(exact) | set(starts) | set(contains)
+        for title, keys in _credits.items():
+            if title in placed:
+                continue
+            if folded in keys or (loose and loose in keys):
+                named.append(title)
+            elif any(folded in key for key in keys):
+                credited.append(title)
+    ranked = (exact + sorted(starts, key=len) + sorted(named, key=str.casefold)
+              + sorted(contains, key=len) + sorted(credited, key=str.casefold))
     if len(ranked) < 5:
         # "tetris" for テトリス (tetorisu), "telepathy" for テレパシ: compare the English and the katakana on one skeleton
         bare = loanword(wanted)

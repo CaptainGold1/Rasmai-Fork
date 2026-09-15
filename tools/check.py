@@ -9,6 +9,13 @@ sys.path.insert(0, str(ROOT))
 
 FAILURES = []
 
+# song titles, charter names and pattern tags are mostly Japanese, and a Windows console defaults to
+# a codepage that cannot print them: without this the sweep dies on the first check that names one
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
+
 print("Rasmai verification sweep")
 
 
@@ -1055,6 +1062,94 @@ def _seam_live():
     finally:
         server.stop()
         web_server.INTERNAL_API_SECRET = kept
+    return problems
+
+
+@check("a trait names a skill or a pattern, never who charted it")
+def _traits_are_skills():
+    from rasmai.engine.insights import even, leaning, notable
+    from rasmai.engine.insights.tags import NOT_A_SKILL
+
+    # one of each kind, all far enough out and confirmed, so only the dimension decides
+    def axis(dimension, label, offset=0.9, **rest):
+        row = {"dimension": dimension, "label": label, "offset": offset, "count": 40, "p": 0.001,
+               "verified": True, "leaning": False}
+        row.update(rest)
+        return row
+
+    skills = [axis("pattern", "fast rotations"), axis("judgement", "tap notes"), axis("tempo", "very fast songs"),
+              axis("density", "dense charts"), axis("slide", "slide-heavy charts")]
+    not_skills = [axis("designer", "charts by someone"), axis("genre", "POPS"), axis("era", "BUDDiES and newer"),
+                  axis("type", "DX charts")]
+    problems = []
+    for name, chosen in (("notable", notable(skills + not_skills)),
+                         ("leaning", leaning([dict(a, verified=False, leaning=True) for a in skills + not_skills])),
+                         ("even", even([dict(a, verified=False, leaning=False, offset=0.0) for a in skills + not_skills]))):
+        named = {row["dimension"] for row in chosen}
+        for dimension in sorted(named & NOT_A_SKILL):
+            problems.append(f"{name}() offered a {dimension} trait; a trait should name a skill the player can work on")
+        if name != "even" and not named:
+            problems.append(f"{name}() dropped the skills along with the rest")
+    if "designer" not in NOT_A_SKILL:
+        problems.append("who charted a song is not a skill and should never be named as a trait")
+    return problems
+
+
+@check("the lookup finds a chart by its artist or its charter, on both the site and the bot")
+def _search_by_credit():
+    import rasmai.bot.builders.charts.index as charts_index
+    from rasmai.bot.builders.charts import search_titles, shared_index
+    from rasmai.web.dashboard.lookup import search_payload
+
+    shared_index()
+    problems = []
+    # read through the module: the tables are rebuilt and rebound, so a name imported from it goes stale
+    if not charts_index._credits:
+        return ["nothing is indexed by artist or charter, so neither surface can search for one"]
+
+    # an artist and a charter are separate asks, and indexing only one of them still passes a test
+    # that takes whichever it finds first, so each is searched for by name
+    index = shared_index()
+    titles = [chart.title.casefold() for chart in index.values()]
+
+    def credited(field):
+        # a name no song is titled after, so a hit can only have come from the credits
+        for chart in index.values():
+            name = str(getattr(chart, field, "") or "").strip()
+            if len(name) >= 5 and name != "-" and not any(name.casefold() in title for title in titles):
+                return name, chart.title
+        return "", ""
+
+    for field, what in (("artist", "artist"), ("designer", "charter")):
+        name, _ = credited(field)
+        if not name:
+            problems.append(f"no {what} in the database to search for, so this proves nothing")
+            continue
+        theirs = {chart.title for chart in index.values() if str(getattr(chart, field, "") or "") == name}
+        hits = search_titles(name, limit=20)
+        # a prolific name has more songs than the list holds, so what matters is that the list is theirs
+        mine = len(theirs & set(hits))
+        if not mine:
+            problems.append(f"searching the {what} {name!r} found none of the {len(theirs)} songs they are credited on")
+        elif mine < min(len(theirs), len(hits)) // 2:
+            problems.append(f"searching the {what} {name!r} returned {len(hits)} songs, only {mine} of them theirs")
+    name = credited("artist")[0]
+
+    # the site reads the same index, so a hit it shows can say who charted it
+    payload = search_payload(None, name, limit=3)
+    if hits and not payload:
+        problems.append(f"the bot found {len(hits)} songs for {name!r} and the site's lookup found none")
+    for row in payload:
+        if "charters" not in row:
+            problems.append("a search result no longer says who charted the song")
+        break
+
+    # a title still beats a credit: someone typing a song name means the song
+    titled = next((title for title in list(charts_index._credits) if len(title) >= 6 and title.isascii()), "")
+    if titled:
+        found = search_titles(titled, limit=5)
+        if found and found[0] != titled:
+            problems.append(f"searching for the exact title {titled!r} put {found[0]!r} first")
     return problems
 
 

@@ -34,7 +34,8 @@ def search_payload(cached: Optional[CachedAnalysis], query: str, limit: int = 12
     :type limit: int
     :rtype: List[Dict[str, Any]]
     """
-    from rasmai.bot.builders.charts import charts_for, search_titles, song_alias, song_for_chart, songs_by_loose_key
+    from rasmai.bot.builders.charts import (charts_for, chart_designer, search_titles, song_alias, song_for_chart,
+                                            song_record, songs_by_loose_key)
     index = _lookup_index(cached)
     loose_map = songs_by_loose_key(cached) if cached else {}
     out: List[Dict[str, Any]] = []
@@ -51,8 +52,11 @@ def search_payload(cached: Optional[CachedAnalysis], query: str, limit: int = 12
                 "accuracy": float(song.accuracy or 0) if song is not None else None,
                 "rank": (song.current_rank or rank_for(float(song.accuracy or 0))) if song is not None else "",
             })
+        # who charted it, so a hit that matched on a charter's name rather than on the title says so
+        record = song_record(title)
+        charters = sorted({name for name in (chart_designer(record, ref) for ref in refs) if name}, key=str.casefold)
         out.append({"title": title, "alias": song_alias(title), "artist": refs[0].artist, "genre": refs[0].genre,
-                    "cover": refs[0].cover, "charts": charts})
+                    "cover": refs[0].cover, "charters": charters, "charts": charts})
         if len(out) >= limit:
             break
     return _json_safe(out)

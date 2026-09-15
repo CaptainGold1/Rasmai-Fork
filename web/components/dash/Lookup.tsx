@@ -109,7 +109,7 @@ export function Lookup({ target }: { target: LookupTarget | null }) {
         <input
           className="search"
           type="search"
-          placeholder="song title, in Japanese, romaji or English"
+          placeholder="title, artist or charter"
           value={query}
           onChange={(e) => search(e.target.value)}
           onKeyDown={(e) => {
@@ -132,14 +132,17 @@ export function Lookup({ target }: { target: LookupTarget | null }) {
       </div>
       {hits !== null && (
         <ul className="hits">
-          {hits.length === 0 && <li className="empty">{searchError ? `The search could not run. ${searchError}` : "Nothing matches. Try part of the title, or its reading in romaji."}</li>}
+          {hits.length === 0 && <li className="empty">{searchError ? `The search could not run. ${searchError}` : "Nothing matches. Try part of the title, its reading in romaji, or an artist or charter."}</li>}
           {hits.map((h) => (
             <li key={h.title} className="hit">
               <Jacket cover={h.cover} size={44} />
               <button type="button" className="hit-title" onClick={() => open(h.title)}>
                 {h.title}
                 {h.alias ? <span className="alias">{h.alias}</span> : null}
-                <small>{h.artist}</small>
+                <small>
+                  {h.artist}
+                  {h.charters?.length ? <span className="charter">charted by {h.charters.join(", ")}</span> : null}
+                </small>
               </button>
               <div className="hit-charts">
                 {h.charts.map((c) => (

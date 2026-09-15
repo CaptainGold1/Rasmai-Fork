@@ -72,8 +72,11 @@ def chart_tags(chart: ChartRef) -> List[Dict[str, Any]]:
 NON_TECHNIQUE = {"notorious", "good to practice on", "a maimai standard", "one hard section", "hard throughout", "hard to score"}
 
 
-# what a chart is rather than what it asks of the hands: measured and listed, but never drawn on the wheel
-NOT_ON_RADAR = {"type", "era", "genre", "designer"}
+# what a chart is rather than what it asks of the hands. These are still measured, because a
+# charter's habits and an era's style soak up differences that would otherwise be blamed on a
+# pattern, but a trait is only worth telling a player about if it is a skill they can work on,
+# so none of them are ever named on the wheel or in the lists.
+NOT_A_SKILL = {"type", "era", "genre", "designer"}
 
 
 def _is_technique(dimension: str, label: str) -> bool:

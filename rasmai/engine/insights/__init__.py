@@ -3,7 +3,7 @@ from rasmai.engine.insights.tags import (  # noqa: F401
     NOT_A_DEMAND,
     chart_tags,
     NON_TECHNIQUE,
-    NOT_ON_RADAR,
+    NOT_A_SKILL,
     _is_technique,
 )
 from rasmai.engine.insights.traits import (  # noqa: F401
