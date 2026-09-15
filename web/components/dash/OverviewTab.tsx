@@ -47,7 +47,7 @@ export function OverviewTab({ me, charts, chartsError, onRetry }: { me: Overview
       <div className="two-up">
         <section className="ledger">
           <div className="ledger-head">
-            <Label info="Where your scores put you. Comfortable up to is the highest chart constant you still score consistently at, S expected up to is where a first pass should still land an S, and hardest S is the toughest chart you hold an S on. Reachable from your picks is what the What to play targets add up to if every one lands. Charts you pick is how old they were when you played them, so it says whether you chase new releases or work the back catalogue. From re-rating is what your best 50 owes to constants being revised rather than to you playing.">how you play</Label>
+            <Label info="Where your scores put you. Comfortable up to is the highest chart constant you still score consistently at, S expected up to is where a first pass should still land an S, and hardest S is the toughest chart you hold an S on. Reachable from your picks is what the What to play targets add up to if every one lands. Charts you pick is how old they were when you played them, so it says whether you chase new releases or work the back catalogue. From re-rating is what your best 50 owes to constants being revised rather than to you playing. First track of a credit compares your opening play against the ones after it, against what was expected of each chart, and only appears once enough plays say the gap is not chance.">how you play</Label>
           </div>
           <dl className="facts">
             <dt>comfortable up to</dt>
@@ -77,6 +77,14 @@ export function OverviewTab({ me, charts, chartsError, onRetry }: { me: Overview
               <>
                 <dt>notes hit</dt>
                 <dd className="mono">{num(habits.notes.notes)}</dd>
+              </>
+            ) : null}
+            {habits?.warmUp ? (
+              <>
+                <dt>first track of a credit</dt>
+                <dd className="mono">
+                  {Math.abs(habits.warmUp.gap).toFixed(2)}% {habits.warmUp.colder ? "under" : "over"} the rest
+                </dd>
               </>
             ) : null}
             <dt>charts scored</dt>

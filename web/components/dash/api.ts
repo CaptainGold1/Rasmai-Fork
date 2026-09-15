@@ -54,6 +54,7 @@ export type Overview = {
         age?: { plays: number; medianYears: number; freshShare: number; newestQuarterYears: number };
         rerates?: { charts: number; rating: number };
         notes?: { notes: number; charts: number };
+        warmUp?: { firstTrack: number; laterTracks: number; gap: number; plays: number; p: number; colder: boolean };
       };
       traits?: Trait[];
       traitAxes?: Trait[];

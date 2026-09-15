@@ -148,7 +148,8 @@ class MaimaiRatingAnalyzer(ScorePages, AreaPages, PlaylogPages, ProfilePages):
         self.best50 = analysis.build_best50(self.songs)
         # needs the pools, so it is filled once they exist rather than inside the profile build
         self.play_profile.habits = insights.play_habits(
-            self.songs, self.recent_songs, chart_index, self.play_counts, self.best50)
+            self.songs, self.recent_songs, chart_index, self.play_counts, self.best50,
+            recorded_plays=self.recorded_plays, profile=self.play_profile)
 
         print(
             f"Analyzing {len(self.songs)} charts "

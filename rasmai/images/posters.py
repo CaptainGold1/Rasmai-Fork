@@ -50,6 +50,17 @@ def _avatar(avatar_b64: str) -> str:
     return template("avatar-none")
 
 
+def _warm_up_line(warm: dict) -> str:
+    """One clause about the first track of a credit, when the player's plays say anything about it."""
+    if not warm:
+        return ""
+    gap = abs(float(warm.get("gap", 0)))
+    if warm.get("colder"):
+        return (f" &middot; your first track of a credit runs <b>{gap:.2f}%</b> under the rest, "
+                f"so spend it on something you know")
+    return f" &middot; your first track of a credit runs <b>{gap:.2f}%</b> over the rest"
+
+
 def _page(eyebrow: str, name: str, avatar_b64: str, counters: Sequence[tuple], headline_value: str,
           headline_caption: str, body: str, foot_left: str, foot_right: str, body_class: str = "") -> str:
     return render(
@@ -347,7 +358,8 @@ def profile_poster_html(summary: Dict[str, Any], profile: Any, songs: Sequence[A
             age=float(age.get("medianYears", 0)), fresh=float(age.get("freshShare", 0)) * 100,
             rerates=(f" &middot; re-rating has moved your best 50 by <b>{int(rerates['rating']):+d}</b> "
                      f"across {int(rerates['charts'])} charts" if rerates.get("charts") else ""),
-            notes=(f" &middot; {int(notes['notes']):,} notes hit" if notes.get("notes") else ""),
+            notes=(f" &middot; {int(notes['notes']):,} notes hit" if notes.get("notes") else "")
+                  + _warm_up_line(habits.get("warmUp") or {}),
         )
 
     open_slots = int(b.get("newSlotsOpen", 0)) + int(b.get("oldSlotsOpen", 0))
