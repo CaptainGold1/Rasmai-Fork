@@ -117,12 +117,17 @@ def read_chart(text: str, expected: Dict[str, Any]) -> Optional[Dict[str, float]
     chart = parse(text)
     if not chart.notes:
         return None
-    counts = chart.counts()
-    for mine, theirs in (("tap", "t"), ("hold", "h"), ("slide", "s"), ("touch", "u"), ("break", "b")):
-        if counts[mine] != int(expected.get(theirs) or 0):
-            return None
     if len(chart.notes) != int(expected.get("n") or 0):
         return None
+    counts = chart.counts()
+    split = [(counts[mine], int(expected.get(theirs) or 0)) for mine, theirs in
+             (("tap", "t"), ("hold", "h"), ("slide", "s"), ("touch", "u"), ("break", "b"))]
+    # a few dozen charts are published with a total but no split of it. Checking against the split
+    # there means checking against zeros, which refuses a reading that may be perfectly good; the
+    # total is the check that still stands, and it is the strict one.
+    if any(theirs for _mine, theirs in split):
+        if any(mine != theirs for mine, theirs in split):
+            return None
     measured = distil(chart)
     measured["lv"] = float(expected.get("l") or 0)
     return measured

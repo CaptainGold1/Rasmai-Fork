@@ -1531,6 +1531,12 @@ def _simai_trust():
             problems.append(f"a chart the source counts differently on {field!r} was used anyway")
     if simai.read_chart("", agrees) is not None:
         problems.append("an empty chart was read as though it held something")
+    # a chart published with a total and no split of it is judged on the total alone, not refused
+    no_split = {"t": 0, "h": 0, "s": 0, "u": 0, "b": 0, "n": 8, "l": 13.0}
+    if simai.read_chart(good, no_split) is None:
+        problems.append("a chart whose source published no split was refused instead of judged on its total")
+    if simai.read_chart(good, {**no_split, "n": 9}) is not None:
+        problems.append("a chart whose total disagrees was used anyway when no split was published")
     return problems
 
 
