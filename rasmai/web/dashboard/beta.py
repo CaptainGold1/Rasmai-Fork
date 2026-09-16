@@ -13,7 +13,7 @@ FEATURES: Dict[str, Dict[str, str]] = {
 
 
 def _simai_status() -> Dict[str, Any]:
-    """Whether chart reading has read enough to say anything yet, and how far along it is.
+    """Whether chart reading can say anything yet, how far along it is, and how long is left.
 
     The charts are read a batch at a time over the first hour or so a bot is up, and nothing can be
     measured until enough of them are in to know what a demanding chart looks like. Without this a
@@ -24,13 +24,18 @@ def _simai_status() -> Dict[str, Any]:
         from rasmai.scraping import simai
         rows, levels = simai.cached()
         read = sum(1 for row in rows.values() if row)
+        dropped = len(rows) - read
         waiting = len(simai._pending(rows))
-        if levels:
-            left = f", {waiting:,} still to read" if waiting else ""
-            return {"ready": True, "status": f"{read:,} charts read{left}"}
-        if read + waiting == 0:
-            return {"ready": False, "status": "waiting for the chart list"}
-        return {"ready": False, "status": f"reading charts: {read:,} of {read + waiting:,}"}
+        done = read + dropped
+        total = done + waiting
+        rate = simai.pace()
+        return {
+            "ready": bool(levels),
+            "done": done, "total": total, "read": read, "waiting": waiting,
+            "percent": round(done / total * 100, 1) if total else 0.0,
+            "eta": int(waiting / rate) if rate and waiting else 0,
+            "status": f"{read:,} charts read" if not waiting else f"{read:,} of {total:,} charts read",
+        }
     except Exception:
         return {"ready": False, "status": ""}
 

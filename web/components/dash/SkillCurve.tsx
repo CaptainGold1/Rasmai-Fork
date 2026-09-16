@@ -147,8 +147,7 @@ export function SkillCurve({ curve, charts, comfort, reach, playedCeiling }: Pro
           ))}
       </div>
       <p className="hint">
-        Dots below the band are charts you score under your own curve on, and the ones furthest below are where the picks come
-        from. The band widens where you have played less, which is the model saying it is less sure.
+        Dots below the band are where the picks come from. The band widens where you have played less: the model is less sure there.
       </p>
     </section>
   );

@@ -609,6 +609,13 @@ html[data-standalone] .dash .ident { margin-top: 16px; }
 .share-toggles .dim { display: block; font-size: 12.5px; color: var(--muted); }
 .share-spark { display: block; width: 100%; height: 70px; margin-top: 14px; }
 
+/* groundwork a beta needs before it can say anything: how far it has got, and how long is left */
+.crawl { display: block; margin-top: 8px; }
+.crawl-bar { display: block; height: 10px; border: 2px solid var(--edge); border-radius: 999px; overflow: hidden; background: var(--paper-2); }
+.crawl-bar > span { display: block; height: 100%; min-width: 3px; background: var(--pink); transition: width 0.6s ease; }
+.crawl-said { display: block; margin-top: 5px; font-size: 11.5px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .crawl-bar > span { transition: none; } }
+
 /* the fitted curve, the spread around it, and every score behind both */
 .curve { display: block; width: 100%; height: auto; margin-top: 14px; overflow: visible; }
 .curve-grid { stroke: var(--line); stroke-width: 1; }

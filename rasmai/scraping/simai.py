@@ -52,8 +52,31 @@ def _stored() -> Dict[str, Any]:
     return rows if isinstance(rows, dict) else {}
 
 
-def _save(rows: Dict[str, Any]) -> None:
-    source_state_set(SOURCE, payload=json.dumps({"v": VERSION, "rows": rows}, separators=(",", ":")))
+def _held() -> Dict[str, Any]:
+    """The whole stored blob, rows and pace together."""
+    state = source_state_get(SOURCE) or {}
+    try:
+        held = json.loads(str(state.get("payload") or ""))
+    except ValueError:
+        return {}
+    return held if isinstance(held, dict) else {}
+
+
+def pace() -> float:
+    """Charts read a second, as last measured; 0 when nothing has been timed yet."""
+    try:
+        return float(_held().get("rate") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _save(rows: Dict[str, Any], rate: Optional[float] = None) -> None:
+    """Keep the readings, and the pace they were read at so time left can be worked out."""
+    blob: Dict[str, Any] = {"v": VERSION, "rows": rows}
+    kept = rate if rate else pace()
+    if kept:
+        blob["rate"] = round(kept, 3)
+    source_state_set(SOURCE, payload=json.dumps(blob, separators=(",", ":")))
     _forget()
 
 
@@ -129,6 +152,7 @@ def refresh(budget: int = BATCH) -> Dict[str, Any]:
         if not waiting:
             return known
         read = refused = missed = 0
+        started = time.monotonic()
         logger.info("simai: reading %d of the %d charts still to read", min(budget, len(waiting)), len(waiting))
         for key, chart_id, row in waiting[:budget]:
             text = fetch_chart(chart_id)
@@ -150,9 +174,9 @@ def refresh(budget: int = BATCH) -> Dict[str, Any]:
                     read += 1
                     known[key] = measured
                 if (read + refused) % SAVE_EVERY == 0:
-                    _save(known)
+                    _save(known, (read + refused) / max(1e-6, time.monotonic() - started))
             time.sleep(PAUSE)
-        _save(known)
+        _save(known, (read + refused) / max(1e-6, time.monotonic() - started) if (read + refused) else None)
         logger.info("simai: read %d, could not trust %d, %d charts still to read",
                     read, refused, max(0, len(waiting) - read - refused))
         return known if (read or refused) else {}
@@ -240,8 +264,10 @@ def progress() -> Dict[str, int]:
         held = sheets_held()
     except Exception:
         held = {"charts": 0, "bytes": 0}
+    rate = pace()
     return {"read": trusted, "refused": len(rows) - trusted, "waiting": waiting,
             "sheets": held["charts"], "sheetBytes": held["bytes"],
+            "rate": round(rate, 3), "eta": int(waiting / rate) if rate and waiting else 0,
             "checked_at": str((source_state_get(SOURCE) or {}).get("checked_at") or "")}
 
 

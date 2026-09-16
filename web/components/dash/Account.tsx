@@ -81,10 +81,9 @@ export function Account({ me, refresh, onRefresh }: { me: Overview; refresh: Ref
           </p>
         )}
         {note && <p className="hint">{note}</p>}
-        <p className="hint">A read takes about a minute and is the same thing the Discord commands do. Recommendations here update from it.</p>
+        <p className="hint">About a minute, and the same read the Discord commands do. The picks here update from it.</p>
         <p className="hint">
-          An export you downloaded earlier can be imported back: its plays, rating points and play counts are added, nothing already stored is
-          touched. Import the oldest file first so each best lands on the day it was set.
+          An export can be imported back; nothing stored is overwritten. Import your oldest file first, so each best lands on the day it was set.
         </p>
         <InstallHint />
       </section>
@@ -121,7 +120,7 @@ export function Account({ me, refresh, onRefresh }: { me: Overview; refresh: Ref
         <div className="ledger-head">
           <Label>unlink</Label>
         </div>
-        <p className="hint">Removes the maimai session, stored scores, history and play counts from the bot. Your Discord sign-in here stays.</p>
+        <p className="hint">Removes the maimai session, scores, history and play counts. Your Discord sign-in here stays.</p>
         {confirm ? (
           <div className="btn-row">
             <button type="button" className="button pink" onClick={unlink} disabled={busy}>

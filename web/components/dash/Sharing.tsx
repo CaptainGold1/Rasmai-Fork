@@ -46,7 +46,7 @@ export function Sharing({ state, onChange }: { state: SharingState; onChange: (n
       </div>
 
       <p className="hint">
-        Off by default. When it is on, your name, rating and play count are shown, plus whichever sections you pick below.
+        Off by default. Shows your name, rating and play count, plus the sections you pick.
       </p>
 
       <div className="btn-row">

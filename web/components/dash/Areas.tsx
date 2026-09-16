@@ -202,9 +202,7 @@ export function Areas({ focus = "" }: { focus?: string }) {
           <dd className="mono">{data.pace ? `${data.pace} km · from ${data.readings} reading${data.readings === 1 ? "" : "s"}` : "not measured yet"}</dd>
         </dl>
         <p className="hint">
-          maimai DX NET says how far you are and how far the next reward sits, not what a play is worth. Each read pairs your distance with your play
-          count, so once the map moves between two reads the plays-to-go figures appear and sharpen from there. Reward names and English area names come
-          from SilentBlue RemyWiki.
+          maimai DX NET gives distance, not what a play is worth, so plays-to-go appears once the map has moved between two reads. Names come from SilentBlue RemyWiki.
         </p>
       </section>
       {travelling.length > 0 && (

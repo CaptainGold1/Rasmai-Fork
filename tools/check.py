@@ -1570,6 +1570,29 @@ def _simai_beta():
     named = {demand[2] for demand in DEMANDS}
     if {label for _dimension, label in chart_traits(chart, False)} & named:
         problems.append("a trait read from the notes appeared for someone who never asked for it")
+
+    # the numbers the progress bar is drawn from have to add up, or it shows a wrong time left
+    from rasmai.scraping import simai
+    from rasmai.web.dashboard.beta import _simai_status
+    held_cached, held_pending, held_pace = simai.cached, simai._pending, simai.pace
+    try:
+        # sixty read, ten that could not be trusted, and nine hundred still to go at two a second
+        rows = {f"c{n}|dx|master": ({"spins": 0.1, "lv": 13.0} if n < 60 else {}) for n in range(70)}
+        simai.cached = lambda: (rows, {"spins": 0.01})
+        simai._pending = lambda known: [None] * 900
+        simai.pace = lambda: 2.0
+        state = _simai_status()
+        want = {"done": 70, "total": 970, "read": 60, "waiting": 900, "eta": 450, "ready": True}
+        for field, value in want.items():
+            if state.get(field) != value:
+                problems.append(f"the progress bar would read {field}={state.get(field)!r}, expected {value!r}")
+        if abs(float(state["percent"]) - 7.2) > 0.05:
+            problems.append(f"70 of 970 charts is 7.2 per cent, shown as {state['percent']}")
+        simai.pace = lambda: 0.0
+        if _simai_status()["eta"] != 0:
+            problems.append("a time left was given before the pace had been measured")
+    finally:
+        simai.cached, simai._pending, simai.pace = held_cached, held_pending, held_pace
     store.DATABASE_PATH = was
     store._database_ready = False
     return problems

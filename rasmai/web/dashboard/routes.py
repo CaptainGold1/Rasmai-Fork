@@ -43,6 +43,10 @@ def handle_get(handler: Any, path: str, query: Dict[str, List[str]], user: Dict[
     if path == "/internal/me/refresh":
         handler._send_json(200, refresh_jobs.status(user["id"]))
         return True
+    if path == "/internal/me/beta":
+        # the switches and how far chart reading has got: light enough for the page to poll while it runs
+        handler._send_json(200, beta_state(user["id"]))
+        return True
     if path == "/internal/me/admin":
         # one account only, and anyone else is told the route does not exist rather than that it is refused
         if not is_admin(user["id"]):
