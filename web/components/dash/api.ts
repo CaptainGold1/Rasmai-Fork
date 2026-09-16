@@ -26,6 +26,18 @@ export type Sharing = {
   sections: { best50: boolean; traits: boolean; recent: boolean; areas: boolean };
 };
 
+export type TraitFamily = {
+  key: string;
+  label: string;
+  note: string;
+  offset: number;
+  charts: number;
+  traits: number;
+  plays: number;
+  verified: boolean;
+  inside: Trait[];
+};
+
 export type BetaFeature = {
   key: string;
   label: string;
@@ -77,6 +89,7 @@ export type Overview = {
       };
       traits?: Trait[];
       traitAxes?: Trait[];
+      traitFamilies?: TraitFamily[];
       [key: string]: unknown;
     };
     traitPractice?: TraitPractice[];

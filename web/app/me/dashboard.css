@@ -609,6 +609,18 @@ html[data-standalone] .dash .ident { margin-top: 16px; }
 .share-toggles .dim { display: block; font-size: 12.5px; color: var(--muted); }
 .share-spark { display: block; width: 100%; height: 70px; margin-top: 14px; }
 
+/* the traits grouped by what they ask of you; each one opens onto what is under it */
+.families { list-style: none; margin: 12px 0 0; padding: 0; }
+.families li { border-top: 1px solid var(--line); }
+.families button { display: grid; grid-template-columns: 58px 1fr auto; gap: 12px; align-items: baseline; width: 100%;
+  padding: 10px 0; background: none; border: 0; text-align: left; cursor: pointer; color: inherit; font: inherit; }
+.families button:hover .trait-label { color: var(--pink); }
+.families button:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+.families .trait-label { font-size: 14px; }
+.families .trait-label .dim { display: block; font-size: 12px; color: var(--muted); }
+.families li.open { background: var(--paper-2); }
+.families .traits.inside { margin: 0 0 8px; padding: 0 0 0 12px; border-left: 2px solid var(--line); }
+
 /* groundwork a beta needs before it can say anything: how far it has got, and how long is left */
 .crawl { display: block; margin-top: 8px; }
 .crawl-bar { display: block; height: 10px; border: 2px solid var(--edge); border-radius: 999px; overflow: hidden; background: var(--paper-2); }

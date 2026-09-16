@@ -1944,6 +1944,101 @@ def _break_bonus():
     return problems
 
 
+@check("every trait belongs to a family, and a family follows the charts behind it")
+def _families():
+    from rasmai.engine.insights import family_axes, unclaimed
+    from rasmai.engine.insights.families import FAMILY_MIN_CHARTS
+    from rasmai.engine.judgements import KINDS
+    from rasmai.engine.simai import DEMANDS
+    from rasmai.scraping.mai_notes import PATTERN_ENGLISH, SHARE_BANDS, pattern_label
+
+    # everything the model can currently name, from the places the names come from
+    vocabulary = [{"dimension": "pattern", "label": pattern_label(tag)} for tag in PATTERN_ENGLISH]
+    vocabulary += [{"dimension": dimension, "label": label} for _f, dimension, _hi, label in SHARE_BANDS]
+    vocabulary += [{"dimension": dimension, "label": label} for _k, dimension, label, _fixed in DEMANDS]
+    vocabulary += [{"dimension": "judgement", "label": f"{kind} notes"} for kind in KINDS]
+    vocabulary += [{"dimension": "tempo", "label": "slow songs (under 130 BPM)"},
+                   {"dimension": "tempo", "label": "very fast songs (over 210 BPM)"},
+                   {"dimension": "density", "label": "light charts (under 620 notes)"},
+                   {"dimension": "density", "label": "dense charts (890+ notes)"}]
+    problems = []
+    orphans = unclaimed(vocabulary)
+    if orphans:
+        problems.append(f"no family takes {len(orphans)} of the traits the model can name: {orphans[:4]}")
+
+    # a family follows the charts behind it, so a tag measured on a handful cannot swing it
+    axes = [
+        {"dimension": "pattern", "label": "乱打 (streams)", "offset": -1.0, "count": 10, "plays": 2, "verified": False},
+        {"dimension": "density", "label": "dense charts (890+ notes)", "offset": 0.0, "count": 90, "plays": 30,
+         "verified": True},
+    ]
+    families = {f["key"]: f for f in family_axes(axes)}
+    speed = families.get("speed")
+    if speed is None:
+        problems.append("a family with a hundred charts behind it was not drawn")
+    else:
+        want = round((-1.0 * 10 + 0.0 * 90) / 100, 2)
+        if abs(speed["offset"] - want) > 1e-9:
+            problems.append(f"ten charts saying -1.0 and ninety saying 0.0 is {want}, got {speed['offset']}")
+        if speed["charts"] != 100 or speed["traits"] != 2:
+            problems.append(f"the family should carry both traits and a hundred charts, got {speed['charts']}")
+        if len(speed["inside"]) != 2:
+            problems.append("a family did not carry the traits underneath it, so it cannot be opened up")
+        # the confirmed trait sits at 0.0 and the family leans negative, so nothing confirms that lean
+        if speed["verified"]:
+            problems.append("a family was called confirmed when nothing under it confirms the way it leans")
+
+    # too little behind it and it is not drawn at all
+    thin = family_axes([{"dimension": "pattern", "label": "乱打 (streams)", "offset": -1.0,
+                         "count": FAMILY_MIN_CHARTS - 1, "plays": 1, "verified": False}])
+    if thin:
+        problems.append(f"a family with {FAMILY_MIN_CHARTS - 1} charts behind it was drawn anyway")
+
+    # what a chart is is never a skill, so it never reaches a family
+    if family_axes([{"dimension": "genre", "label": "POPS＆アニメ", "offset": -1.0, "count": 200, "plays": 9}]):
+        problems.append("a genre was rolled into a family, which is not a thing to practise")
+    return problems
+
+
+@check("a trait read from the charts can name charts to practise it on")
+def _read_traits_practice():
+    from rasmai.engine.analysis import ChartIndex, ChartRef, build_play_profile, calculate_rating
+    from rasmai.engine.insights.traits import practice_for
+    from rasmai.scraping import simai
+    from rasmai.storage.models import SongInfo
+
+    index, measured, songs = ChartIndex(), {}, []
+    for n in range(40):
+        ref = ChartRef(title=f"chart {n}", chart_type="dx", difficulty="master", constant=13.0, level="13",
+                       notes=700, genre="", artist="", cover="", version=25, bpm=170.0)
+        index.add(ref)
+        measured["|".join(ref.key)] = {"spins": 0.1 if n % 2 == 0 else 0.0, "lv": 13.0}
+        accuracy = 99.0 if n % 2 else 99.5
+        songs.append(SongInfo(name=f"chart {n}", chart_type="dx", difficulty_type="master", accuracy=accuracy,
+                              is_new=False, level="13", difficulty=13.0, rating=calculate_rating(13.0, accuracy)))
+    held = simai.cached
+    simai.cached = lambda: (measured, {"spins": 0.01})
+    problems = []
+    try:
+        profile = build_play_profile(songs, [], index, 26, reading=True)
+        axis = next((a for a in profile.trait_axes if a["label"] == "charts with spins"), None)
+        if axis is None:
+            problems.append("the trait was not measured, so there was nothing to practise")
+        else:
+            picks = practice_for(axis, index, profile, songs, limit=3)
+            if not picks:
+                problems.append("a trait read from the charts named no charts to practise it on")
+            elif not all("spin" in "".join(str(v) for v in p.values()) or p["title"].startswith("chart") for p in picks):
+                problems.append(f"the charts named do not carry the trait: {picks}")
+        # a note type measured off the judgement pages is not a property of any chart, so it names none
+        judged = {"dimension": "judgement", "label": "break notes", "offset": -1.0, "count": 30}
+        if practice_for(judged, index, profile, songs):
+            problems.append("charts were named for a trait that is about the hands, not about any chart")
+    finally:
+        simai.cached = held
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:

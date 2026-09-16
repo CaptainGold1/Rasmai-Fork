@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import type { JudgementProfileData, Trait, TraitPractice } from "./api";
+import { useMemo, useState } from "react";
+import type { JudgementProfileData, Trait, TraitFamily, TraitPractice } from "./api";
 import { Empty, Info, Jacket, Label, TitleLink, type OpenChart } from "./bits";
 
 // what a chart is rather than what it asks of the hands. The bot measures these, because a
@@ -202,11 +202,63 @@ function Practice({ items, onOpen }: { items: TraitPractice[]; onOpen?: OpenChar
   );
 }
 
-export function Traits({ traits, axes, charts, practice, onOpen }: { traits: Trait[]; axes: Trait[]; charts: number; practice?: TraitPractice[]; onOpen?: OpenChart }) {
+/** The families, as a wheel and a list that opens. A family is drawn from the charts behind it, so a
+ *  tag measured on nine of them cannot take the same room as one measured on ninety. */
+function Families({ families }: { families: TraitFamily[] }) {
+  const [open, setOpen] = useState<string>("");
+  return (
+    <ul className="families">
+      {families.map((f) => {
+        const shown = open === f.key;
+        return (
+          <li key={f.key} className={shown ? "open" : ""}>
+            <button type="button" onClick={() => setOpen(shown ? "" : f.key)} aria-expanded={shown}>
+              <span className={`mono trait-offset ${f.offset < 0 ? "down" : "up"}`}>
+                {f.offset > 0 ? "+" : ""}
+                {f.offset.toFixed(2)}
+              </span>
+              <span className="trait-label">
+                {f.label}
+                {f.verified ? "" : " ?"}
+                <span className="dim">{f.note}</span>
+              </span>
+              <span className="mono dim">{f.charts.toLocaleString()} charts · {f.traits}</span>
+            </button>
+            {shown && (
+              <ul className="traits inside">
+                {f.inside.map((t) => (
+                  <li key={`${t.dimension}:${t.label}`}>
+                    <span className={`mono trait-offset ${t.offset < 0 ? "down" : "up"}`}>
+                      {t.offset > 0 ? "+" : ""}
+                      {t.offset.toFixed(2)}
+                    </span>
+                    <span className="trait-label">{t.english ?? t.label}</span>
+                    <span className="mono dim">{t.count}</span>
+                    <span className="trait-when">{chance(t.p)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+export function Traits({ traits, axes, charts, families, practice, onOpen }: { traits: Trait[]; axes: Trait[]; charts: number; families?: TraitFamily[]; practice?: TraitPractice[]; onOpen?: OpenChart }) {
   // the confirmed list arrives already filtered; the leaning and level ones are built here, so
   // the same rule has to be applied before anything is counted or drawn
   const all = useMemo(() => (axes ?? []).filter((a) => !NOT_A_SKILL.has(a.dimension)), [axes]);
   const wheel = useMemo(() => radarAxes(all), [all]);
+  // a family is drawn as an axis like any other, but it is never "leaning": it is as sure as what
+  // is under it, and the list below says how much that is
+  const onFamilies = useMemo(
+    () => (families ?? []).map((f) => ({ dimension: "family", label: f.label, english: f.label, offset: f.offset,
+                                         count: f.charts, plays: f.plays, p: 0, verified: f.verified,
+                                         leaning: !f.verified })),
+    [families],
+  );
   const confirmed = traits.filter((t) => t.verified !== false);
   const leaning = all.filter(isLean);
   const even = all.filter(isEven).sort((a, b) => b.count - a.count);
@@ -266,7 +318,13 @@ export function Traits({ traits, axes, charts, practice, onOpen }: { traits: Tra
         <div className="two-up radar-split">
           <div className="radar-wrap">
             <Info text="Each axis is one of your play traits: patterns, note mix, tempo, density. The middle ring is your own average: a point further out means you score above it on those charts, further in means below. A hollow point with a ? is not confirmed: leaning one way, or a group you play level with the rest, shown in grey." />
-            {wheel.length >= RADAR_MIN ? <Radar axes={wheel} /> : <p className="hint">The wheel appears once three or more play traits have enough charts behind them.</p>}
+            {onFamilies.length >= RADAR_MIN ? (
+              <Radar axes={onFamilies} />
+            ) : wheel.length >= RADAR_MIN ? (
+              <Radar axes={wheel} />
+            ) : (
+              <p className="hint">The wheel appears once three or more play traits have enough charts behind them.</p>
+            )}
           </div>
           <div>
             <div className="ledger-head">
@@ -279,6 +337,14 @@ export function Traits({ traits, axes, charts, practice, onOpen }: { traits: Tra
             <List items={strong} tone="up" empty="Nothing sits above your own average yet, confirmed or leaning." />
           </div>
         </div>
+        {families?.length ? (
+          <>
+            <div className="ledger-head">
+              <Label info="Your traits grouped by what they are really asking of you. A family follows the charts behind it, so a tag measured on nine charts moves it about a ninth as far as one measured on ninety. Open one to see the traits underneath with their own numbers.">what each part of your play asks</Label>
+            </div>
+            <Families families={families} />
+          </>
+        ) : null}
         {practice?.length ? (
           <>
             <div className="ledger-head">

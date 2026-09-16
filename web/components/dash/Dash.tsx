@@ -338,6 +338,7 @@ export function Dash() {
             <Traits
               traits={me.analysis?.profile?.traits ?? []}
               axes={me.analysis?.profile?.traitAxes ?? []}
+              families={me.analysis?.profile?.traitFamilies ?? []}
               charts={Number(me.analysis?.profile?.sampleSize ?? 0)}
               practice={me.analysis?.traitPractice ?? []}
               onOpen={openChart}

@@ -16,6 +16,15 @@ DROPPED_BEST_GAP = 2.0
 DROPPED_BEST_PLAYS = 2
 
 
+def _families(axes):
+    """The traits rolled up, for the wheel; empty when they cannot be read for any reason."""
+    try:
+        from rasmai.engine.insights.families import family_axes
+        return family_axes(axes)
+    except Exception:
+        return []
+
+
 @dataclass
 class PlayProfile:
     """What the player's own history says about how they play."""
@@ -388,6 +397,7 @@ class PlayProfile:
             "difficultyOffsets": {tier: round(value, 2) for tier, value in sorted(self.difficulty_offset.items())},
             "traits": list(self.traits),
             "traitAxes": list(self.trait_axes),
+            "traitFamilies": _families(self.trait_axes),
             "calibration": dict(self.calibration),
             "denseCeiling": round(self.dense_ceiling, 1),
             "fcRate": round(self.fc_rate, 3),
