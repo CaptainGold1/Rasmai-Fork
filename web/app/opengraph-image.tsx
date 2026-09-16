@@ -35,7 +35,7 @@ export default async function Image() {
           Rasmai reads your scores and picks the charts worth the most rating, with the odds on each.
         </div>
         <div style={{ display: "flex", marginTop: 46, fontSize: 26, color: "#45d6f2", letterSpacing: 2 }}>
-          rasmai.nguyen.ink
+          rasmai.lol
         </div>
       </div>
     ),

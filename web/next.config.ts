@@ -18,7 +18,7 @@ const CSP = [
   "form-action 'self' https://discord.com",
 ].join("; ");
 
-const secure = (process.env.MAIMAI_PUBLIC_URL ?? "https://rasmai.nguyen.ink").startsWith("https://");
+const secure = (process.env.MAIMAI_PUBLIC_URL ?? "https://rasmai.lol").startsWith("https://");
 
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },

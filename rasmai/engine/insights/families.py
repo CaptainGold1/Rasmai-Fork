@@ -9,6 +9,12 @@ from rasmai.engine.insights.tags import NOT_A_SKILL
 #
 # A community tag is matched on its Japanese name, which is its identity; everything else on the
 # wording it is shown as.
+#
+# What a note type costs, measured off the judgement pages, is deliberately not here. Those offsets
+# are taken against the player's own overall rate, so the five of them sum to zero: any average of
+# them is zero whatever the player does, and rolling them up buried a confirmed -0.86 on breaks at
+# +0.09. They are counted in plays rather than charts as well, which is not the same evidence. They
+# keep their own panel and their own places in the lists.
 FAMILIES: Dict[str, Dict[str, Any]] = {
     "slides": {
         "label": "slide control",
@@ -33,7 +39,7 @@ FAMILIES: Dict[str, Dict[str, Any]] = {
         "members": (
             "混フレ", "持ち替え", "拘束タッチホールド", "拘束タッチホールD", "イーチ難", "巻き込み注意",
             "charts that keep both hands working", "charts with a lot struck together",
-            "charts that throw you across the screen", "hold-heavy charts",
+            "charts that throw you across the screen", "hold-heavy charts", "break-heavy charts",
         ),
     },
     "speed": {
@@ -60,20 +66,15 @@ FAMILIES: Dict[str, Dict[str, Any]] = {
             "charts that change tempo", "slow songs (under 130 BPM)", "light charts (under 620 notes)",
         ),
     },
-    "accuracy": {
-        "label": "accuracy",
-        "note": "what each kind of note costs you, counted off the judgement pages rather than guessed at",
-        # the other families are about what a chart asks for; this one is about what your hands did
-        # with it, so every note type measured from the pages belongs here rather than scattered
-        "members": ("tap notes", "hold notes", "slide notes", "touch notes", "break notes",
-                    "break-heavy charts"),
-    },
 }
 
 ORDER = tuple(FAMILIES)
 
-# a family needs this many charts behind it before it is drawn at all
-FAMILY_MIN_CHARTS = 12
+# A family needs this many charts behind it before it is drawn. The count adds up its traits, and a
+# chart carrying two of them is counted twice, so the bar sits well above the twelve a single trait
+# needs: below this a family is one thin tag wearing a family's name, which is the problem it exists
+# to solve. On the six players measured it drops one family, of two tags over twenty-three charts.
+FAMILY_MIN_CHARTS = 30
 
 
 def _member_of(trait: Dict[str, Any]) -> str:
@@ -100,7 +101,7 @@ def family_axes(axes: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     held: Dict[str, List[Dict[str, Any]]] = {key: [] for key in FAMILIES}
     for trait in axes:
-        if trait.get("dimension") in NOT_A_SKILL:
+        if trait.get("dimension") in NOT_A_SKILL or trait.get("dimension") == "judgement":
             continue
         key = _member_of(trait)
         if key:
@@ -115,6 +116,8 @@ def family_axes(axes: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
         inside = sorted(traits, key=lambda t: float(t["offset"]))
         out.append({
             "key": key, "label": FAMILIES[key]["label"], "note": FAMILIES[key]["note"],
+            # charts is the sum over its traits, so a chart carrying two of them counts twice: it is
+            # the weight behind the family rather than a tally of distinct charts
             "offset": round(offset, 2), "charts": charts, "traits": len(traits),
             "plays": sum(int(t.get("plays") or 0) for t in traits),
             # a family is only as sure as what is under it: confirmed when a confirmed trait carries
@@ -133,5 +136,6 @@ def unclaimed(axes: Sequence[Dict[str, Any]]) -> List[str]:
     """
     from rasmai.engine.insights.tags import _is_technique
     return sorted({str(t.get("label") or "") for t in axes
-                   if t.get("dimension") not in NOT_A_SKILL and not _member_of(t)
+                   if t.get("dimension") not in NOT_A_SKILL and t.get("dimension") != "judgement"
+                   and not _member_of(t)
                    and _is_technique(str(t.get("dimension") or ""), str(t.get("label") or ""))})

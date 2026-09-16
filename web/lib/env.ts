@@ -2,7 +2,7 @@ const trim = (value: string | undefined, fallback = "") => (value ?? fallback).t
 
 /** Runtime configuration, read from the environment on every call so the standalone server picks up .env as deployed. */
 export const env = {
-  publicUrl: () => trim(process.env.MAIMAI_PUBLIC_URL, "https://rasmai.nguyen.ink"),
+  publicUrl: () => trim(process.env.MAIMAI_PUBLIC_URL, "https://rasmai.lol"),
   internalUrl: () => trim(process.env.MAIMAI_INTERNAL_URL, "http://127.0.0.1:8765"),
   internalSecret: () => (process.env.RASMAI_INTERNAL_SECRET ?? "").trim(),
   discordClientId: () => (process.env.DISCORD_CLIENT_ID ?? "").trim(),

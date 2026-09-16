@@ -222,7 +222,9 @@ function Families({ families }: { families: TraitFamily[] }) {
                 {f.verified ? "" : " ?"}
                 <span className="dim">{f.note}</span>
               </span>
-              <span className="mono dim">{f.charts.toLocaleString()} charts · {f.traits}</span>
+              <span className="mono dim">
+                {f.traits} traits · {f.charts.toLocaleString()} charts between them
+              </span>
             </button>
             {shown && (
               <ul className="traits inside">
@@ -340,7 +342,7 @@ export function Traits({ traits, axes, charts, families, practice, onOpen }: { t
         {families?.length ? (
           <>
             <div className="ledger-head">
-              <Label info="Your traits grouped by what they are really asking of you. A family follows the charts behind it, so a tag measured on nine charts moves it about a ninth as far as one measured on ninety. Open one to see the traits underneath with their own numbers.">what each part of your play asks</Label>
+              <Label info="Your traits grouped by what they are really asking of you. A family follows the charts behind it, so a tag measured on nine charts moves it about a ninth as far as one measured on ninety. A chart carrying two of a family's traits is counted for both, so the figure is the weight behind it rather than a tally of songs. What each note type costs you is not here: those are measured against your own rate and cancel out, so they keep the judgements panel below. Open a family to see its traits with their own numbers.">what each part of your play asks</Label>
             </div>
             <Families families={families} />
           </>

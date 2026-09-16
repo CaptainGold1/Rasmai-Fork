@@ -99,7 +99,7 @@ const STRUCTURED = {
   applicationCategory: "GameApplication",
   applicationSubCategory: "Discord bot",
   operatingSystem: "Any",
-  url: "https://rasmai.nguyen.ink/",
+  url: "https://rasmai.lol/",
   description:
     "Rasmai reads your maimai DX NET scores and tells you which charts to play next for the most rating, with the odds on each.",
   isAccessibleForFree: true,

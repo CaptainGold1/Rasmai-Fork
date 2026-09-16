@@ -2,7 +2,7 @@ import { Ring } from "./Ring";
 import { MastheadNav } from "./Shell";
 import { ThemeToggle } from "./Theme";
 
-export const SITE_URL = "https://rasmai.nguyen.ink";
+export const SITE_URL = "https://rasmai.lol";
 export const CONTACT_EMAIL = "cardin@nguyen.ink";
 export const CONTACT_DISCORD = "nek_ng";
 

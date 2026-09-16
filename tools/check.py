@@ -1997,6 +1997,18 @@ def _families():
     # what a chart is is never a skill, so it never reaches a family
     if family_axes([{"dimension": "genre", "label": "POPS＆アニメ", "offset": -1.0, "count": 200, "plays": 9}]):
         problems.append("a genre was rolled into a family, which is not a thing to practise")
+
+    # what a note type costs is measured against the player's own rate, so the five of them sum to
+    # zero: averaged into a family they say nothing at all, and they are counted in plays where the
+    # rest are counted in charts. They belong in their own panel, not in a family.
+    judged = [{"dimension": "judgement", "label": f"{kind} notes", "offset": off, "count": 50, "plays": 50}
+              for kind, off in (("break", -0.86), ("tap", 0.26), ("hold", 0.27), ("slide", 0.27), ("touch", 0.05))]
+    if abs(sum(t["offset"] for t in judged)) > 0.02:
+        problems.append("these offsets no longer sum to zero, so the reasoning below needs revisiting")
+    if family_axes(judged):
+        problems.append("what a note type costs was rolled into a family, where its sign cannot survive")
+    if unclaimed(judged):
+        problems.append(f"note types were reported as having no family, when they are meant to have none: {unclaimed(judged)}")
     return problems
 
 

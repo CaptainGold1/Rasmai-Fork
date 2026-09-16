@@ -2,7 +2,7 @@
 
 # Rasmai
 
-Discord bot for maimai DX. It reads your scores from maimai DX NET and tells you what to play for the most rating, based on how you actually play. Comes with a web dashboard at [rasmai.nguyen.ink](https://rasmai.nguyen.ink).
+Discord bot for maimai DX. It reads your scores from maimai DX NET and tells you what to play for the most rating, based on how you actually play. Comes with a web dashboard at [rasmai.lol](https://rasmai.lol).
 
 ## What it looks like
 
@@ -63,13 +63,13 @@ The dashboard installs as a home screen app: it opens full screen with its own i
 
 **iPhone and iPad** (Safari, the only browser iOS lets do this)
 
-1. Open [rasmai.nguyen.ink/me](https://rasmai.nguyen.ink/me/) and sign in.
+1. Open [rasmai.lol/me](https://rasmai.lol/me/) and sign in.
 2. Tap **Share** (the square with an arrow) in the toolbar.
 3. Scroll the sheet and tap **Add to Home Screen**, then **Add**.
 
 **Android** (Chrome, Edge, Samsung Internet)
 
-1. Open [rasmai.nguyen.ink/me](https://rasmai.nguyen.ink/me/) and sign in.
+1. Open [rasmai.lol/me](https://rasmai.lol/me/) and sign in.
 2. Tap **install the app** when the dashboard offers it, or the browser's **⋮** menu → **Add to Home screen** / **Install app**.
 3. Confirm with **Install**.
 

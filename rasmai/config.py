@@ -49,7 +49,7 @@ TUNNEL_ORIGIN = os.getenv("MAIMAI_TUNNEL_ORIGIN", "http://127.0.0.1:3000").strip
 WEBSERVER_PORT = int(os.getenv("MAIMAI_WEBSERVER_PORT", "8765"))
 
 
-PUBLIC_URL = os.getenv("MAIMAI_PUBLIC_URL", "https://rasmai.nguyen.ink").strip().rstrip("/")
+PUBLIC_URL = os.getenv("MAIMAI_PUBLIC_URL", "https://rasmai.lol").strip().rstrip("/")
 
 
 TUNNEL_MODE = os.getenv("MAIMAI_TUNNEL", "").strip()   # "quick", or the name of a cloudflared tunnel
