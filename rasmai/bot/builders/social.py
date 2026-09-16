@@ -181,7 +181,7 @@ async def build_leaderboard(guild: discord.Guild, owner_id: Optional[int] = None
     for position, (rating, display, maimai_name, region) in enumerate(rows[start:start + LEADERBOARD_PAGE], start + 1):
         tag = f"`{position:>2}`"
         who = f"**{display}**" + (f" · {maimai_name}" if maimai_name and maimai_name != display else "")
-        lines.append(f"{tag} {who} — **{rating}**" + (f" ({region.upper()})" if region != "intl" else ""))
+        lines.append(f"{tag} {who} · **{rating}**" + (f" ({region.upper()})" if region != "intl" else ""))
     embed.description = "\n".join(lines)
     embed.set_footer(text=(f"page {page + 1}/{pages} · " if pages > 1 else "") + f"{len(rows)} opted-in players in this server · ratings from each player's last /analyze")
     shot = await try_render(leaderboard_image_html(guild.name, rows[:20], date_text=datetime.now().strftime("%d %B %Y")))

@@ -156,6 +156,16 @@ def get_database_connection() -> sqlite3.Connection:
                 )
                 setup.execute(
                     """
+                    CREATE TABLE IF NOT EXISTS simai_sheets (
+                        chart_key  TEXT PRIMARY KEY,
+                        chart_id   TEXT NOT NULL DEFAULT '',
+                        sheet      TEXT NOT NULL,
+                        fetched_at TEXT NOT NULL
+                    )
+                    """
+                )
+                setup.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS chart_videos (
                         song       TEXT PRIMARY KEY,
                         page       TEXT NOT NULL DEFAULT '',

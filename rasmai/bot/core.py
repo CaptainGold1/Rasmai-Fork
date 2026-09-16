@@ -236,10 +236,12 @@ def _read_simai() -> None:
 
     A chart never changes once published, so this works down the list and then has nothing left to
     do but pick up whatever a new version adds. It runs after mai-notes because it needs the
-    manifest to know which charts have a file at all.
+    manifest to know which charts have a file at all. The notation is kept as it arrives, so when
+    what is measured changes, the charts are measured again from here rather than fetched again.
     """
     try:
         from rasmai.scraping import simai
+        simai.remeasure()    # a change to what is measured is answered from the copies already held
         while simai.due():
             if not simai.refresh():
                 break        # nothing came back: the site is down, so leave the rest for tomorrow

@@ -1704,6 +1704,57 @@ def _stale_manifest():
     return problems
 
 
+@check("a change to what is measured is answered from the charts already held, not another crawl")
+def _simai_remeasure():
+    import json
+    import pathlib
+    import tempfile
+
+    from rasmai.engine.simai import features as measures
+    from rasmai.scraping import mai_notes, simai
+    from rasmai.storage.db import connection as store
+
+    was, store.DATABASE_PATH = store.DATABASE_PATH, pathlib.Path(tempfile.mkdtemp()) / "t.sqlite3"
+    store._database_ready = False
+    held_fetch, held_pause, held_version = simai.fetch_chart, simai.PAUSE, simai.VERSION
+    problems = []
+    try:
+        from rasmai.storage.db import sheets_held, source_state_set
+        sheet = "(120){4}1,2h[4:1],3-5[8:1],4b,C,{8}6/7,E"
+        rows = {f"song {n}|dx|master": {"t": 4, "h": 1, "s": 1, "u": 1, "b": 1, "n": 8, "l": 13.0, "c": f"id{n}"}
+                for n in range(12)}
+        source_state_set(mai_notes.SOURCE, etag="x",
+                         payload=json.dumps({"v": mai_notes.FORMAT, "rows": rows}, separators=(",", ":")))
+        mai_notes._forget()
+        simai.fetch_chart = lambda chart_id: sheet
+        simai.PAUSE = 0.0
+        simai.refresh(12)
+        if sheets_held()["charts"] != 12:
+            problems.append(f"the notation was not kept: {sheets_held()}")
+
+        # the measures now mean something else, so every reading taken under the old ones is dropped
+        simai.VERSION = measures.VERSION + 1
+        simai._forget()
+        if simai._stored():
+            problems.append("readings taken under older measures were kept anyway")
+        asked = []
+        simai.fetch_chart = lambda chart_id: asked.append(chart_id)
+        again = simai.remeasure()
+        if asked:
+            problems.append(f"the site was asked for {len(asked)} charts it had already given us")
+        if again != 12:
+            problems.append(f"{again} charts were measured again, expected 12")
+        if sum(1 for row in simai._stored().values() if row) != 12:
+            problems.append("the charts were measured again but the readings did not come back")
+    finally:
+        simai.fetch_chart, simai.PAUSE, simai.VERSION = held_fetch, held_pause, held_version
+        simai._forget()
+        mai_notes._forget()
+        store.DATABASE_PATH = was
+        store._database_ready = False
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:

@@ -9,7 +9,7 @@ import requests
 from rasmai.config import USER_AGENT
 from rasmai.engine.simai import distil, parse
 from rasmai.engine.simai.features import VERSION
-from rasmai.storage.db import source_state_get, source_state_set
+from rasmai.storage.db import sheet_put, sheets_all, source_state_get, source_state_set
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,10 @@ TIMEOUT = 20
 # read this many a run, a second apart, so the site is never asked for more than a page's worth
 BATCH = 120
 PAUSE = 1.0
+
+# keep what has been read this often. A batch takes two minutes, and holding it all in memory until
+# the end means a restart loses the lot and the page shows nothing at all in the meantime.
+SAVE_EVERY = 25
 
 # give up the run after this many unanswered requests in a row, so a site that is down is left alone
 MISSES = 5
@@ -125,6 +129,7 @@ def refresh(budget: int = BATCH) -> Dict[str, Any]:
         if not waiting:
             return known
         read = refused = missed = 0
+        logger.info("simai: reading %d of the %d charts still to read", min(budget, len(waiting)), len(waiting))
         for key, chart_id, row in waiting[:budget]:
             text = fetch_chart(chart_id)
             if text is None:
@@ -136,6 +141,7 @@ def refresh(budget: int = BATCH) -> Dict[str, Any]:
                     break
             else:
                 missed = 0
+                sheet_put(key, chart_id, text)
                 measured = read_chart(text, row)
                 if measured is None:
                     refused += 1
@@ -143,11 +149,42 @@ def refresh(budget: int = BATCH) -> Dict[str, Any]:
                 else:
                     read += 1
                     known[key] = measured
+                if (read + refused) % SAVE_EVERY == 0:
+                    _save(known)
             time.sleep(PAUSE)
         _save(known)
         logger.info("simai: read %d, could not trust %d, %d charts still to read",
                     read, refused, max(0, len(waiting) - read - refused))
         return known if (read or refused) else {}
+
+
+def remeasure() -> int:
+    """Measure every stored chart again, from the notation already held, without asking the site.
+
+    Called when the measures change meaning: the stored readings are thrown away by their version
+    stamp, but the charts they were taken from are still here, so the crawl does not start over.
+
+    :returns: How many charts were measured again.
+    :rtype: int
+    """
+    from rasmai.scraping import mai_notes
+    facts = mai_notes.cached_facts().exact
+    with _lock:
+        known = _stored()
+        measured = 0
+        for key, sheet in sheets_all():
+            if key in known:
+                continue
+            row = facts.get(key)
+            if row is None:
+                continue
+            reading = read_chart(sheet, row)
+            known[key] = reading if reading is not None else {}
+            measured += 1
+        if measured:
+            _save(known)
+            logger.info("simai: measured %d charts again from the copies already held", measured)
+        return measured
 
 
 _memo: Tuple[float, Optional[Dict[str, Any]], Optional[Dict[str, float]]] = (0.0, None, None)
@@ -198,7 +235,13 @@ def progress() -> Dict[str, int]:
         waiting = len(_pending(rows))
     except Exception:
         waiting = 0
+    from rasmai.storage.db import sheets_held
+    try:
+        held = sheets_held()
+    except Exception:
+        held = {"charts": 0, "bytes": 0}
     return {"read": trusted, "refused": len(rows) - trusted, "waiting": waiting,
+            "sheets": held["charts"], "sheetBytes": held["bytes"],
             "checked_at": str((source_state_get(SOURCE) or {}).get("checked_at") or "")}
 
 

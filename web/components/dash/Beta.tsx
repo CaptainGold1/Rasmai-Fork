@@ -50,7 +50,7 @@ export function Beta({ state, onChange }: { state: BetaState; onChange: (next: B
                 <span className="dim">{feature.note}</span>
                 {feature.status && (
                   <span className={`mono hint${feature.ready ? " ok" : ""}`}>
-                    {feature.ready ? feature.status : `${feature.status} — nothing will change until this finishes`}
+                    {feature.ready ? feature.status : `${feature.status}; nothing changes until this finishes`}
                   </span>
                 )}
               </span>

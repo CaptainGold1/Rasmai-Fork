@@ -12,7 +12,7 @@ type AdminData = {
   expired: ({ userId: string; region: string; since: string } & Person)[];
   failingReads: ({ userId: string; lastRead: string; error: string } & Person)[];
   sources: { source: string; checkedAt: string; bytes: number; etag: boolean }[];
-  simai?: { read: number; refused: number; waiting: number; checked_at?: string };
+  simai?: { read: number; refused: number; waiting: number; sheets?: number; sheetBytes?: number; checked_at?: string };
   busiest: ({ userId: string; plays: number } & Person)[];
   activity: { day: string; plays: number; people: number }[];
   growth: { day: string; accounts: number }[];
@@ -481,6 +481,7 @@ export function AdminPanel() {
               Charts read note by note: <b>{data.simai.read.toLocaleString()}</b> trusted
               {data.simai.refused > 0 && <> · {data.simai.refused.toLocaleString()} read differently from maiノーツ and dropped</>}
               {data.simai.waiting > 0 ? <> · {data.simai.waiting.toLocaleString()} still to read</> : <> · nothing left to read</>}
+              {data.simai.sheets ? <> · {data.simai.sheets.toLocaleString()} charts kept, {size(data.simai.sheetBytes ?? 0)}</> : null}
             </p>
           )}
         </section>
