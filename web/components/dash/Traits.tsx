@@ -401,7 +401,7 @@ export function JudgementProfile({ data }: { data: JudgementProfileData | null }
             </thead>
             <tbody>
               {data.types.map((t) => (
-                <tr key={t.kind} className={t.kind === data.weak ? "weak" : ""}>
+                <tr key={t.kind} data-kind={t.kind} className={t.kind === data.weak ? "weak" : ""}>
                   <td className="mono kind">{t.kind}</td>
                   <td className="c-num mono">{Math.round(t.share * 100)}%</td>
                   <td className="c-num mono dim">{Math.round((t.stakeShare ?? t.share) * 100)}%</td>
@@ -415,14 +415,13 @@ export function JudgementProfile({ data }: { data: JudgementProfileData | null }
           <div>
             <p className="hint">
               {weak
-                ? `${weak.kind[0].toUpperCase()}${weak.kind.slice(1)} notes carry ${Math.round(weak.lossShare * 100)}% of what you lose while being worth ${Math.round((weak.stakeShare ?? weak.share) * 100)}% of the chart: that is the type costing you most.`
-                : "No note type costs you more than it is worth. A break is worth five taps, so it is measured against that rather than against how many breaks there are."}
+                ? `${weak.kind[0].toUpperCase()}${weak.kind.slice(1)} notes cost ${Math.round(weak.lossShare * 100)}% of your loss while being worth ${Math.round((weak.stakeShare ?? weak.share) * 100)}%: the type costing you most.`
+                : "No type costs more than it is worth. A break is worth five taps, so it is judged against that."}
             </p>
             {Boolean(data.bonusPerPlay) && (
               <p className="hint">
-                The break bonus costs you {(data.bonusPerPlay ?? 0).toFixed(2)} a play, {Math.round((data.bonusShare ?? 0) * 100)}% of everything you lose. Only a
-                critical earns a break its whole slice of it, so this is the price of not chasing them rather than breaks going wrong, and it is kept out of
-                the note types above.
+                The break bonus costs {(data.bonusPerPlay ?? 0).toFixed(2)} a play, {Math.round((data.bonusShare ?? 0) * 100)}% of your loss. Only a critical
+                earns it, so that is the price of not chasing them rather than breaks going wrong. It is kept out of the types above.
               </p>
             )}
             <ul className="bars">

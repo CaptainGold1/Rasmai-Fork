@@ -131,6 +131,13 @@
 :root[data-theme="dark"] .tbl.judge td.j-miss:not(.zero), :root[data-theme="dark"] .tbl.judge td.lost { color: var(--pink); }
 .tbl.judge tr.total td { border-top: 2px solid var(--edge); border-bottom: 0; font-weight: 700; }
 .tbl.judge-profile td.kind { text-transform: uppercase; letter-spacing: 1.2px; font-size: 12px; color: var(--ink-2); }
+/* each note type in its own colour, the same ones the note mix bar uses, so the table reads at a
+   glance whether or not a type has been singled out */
+.tbl.judge-profile tr[data-kind="tap"] td.kind { color: var(--pink); }
+.tbl.judge-profile tr[data-kind="hold"] td.kind { color: var(--pink-edge); }
+.tbl.judge-profile tr[data-kind="slide"] td.kind { color: var(--cyan); }
+.tbl.judge-profile tr[data-kind="touch"] td.kind { color: #a266e8; }
+.tbl.judge-profile tr[data-kind="break"] td.kind { color: var(--gold); }
 .tbl.judge-profile tr.weak td { color: var(--pink-edge); font-weight: 700; }
 :root[data-theme="dark"] .tbl.judge-profile tr.weak td { color: var(--pink); }
 .judge-lost { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
