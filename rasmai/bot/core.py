@@ -315,9 +315,10 @@ async def on_ready():
     await sync_application_emojis(bot)
     if not _chart_db_daily.is_running():
         _chart_db_daily.start()      # on_ready fires again after a reconnect; the loop must not
+    # the chart table, and then the charts themselves: nothing to do with the wiki, so not behind its switch
+    asyncio.get_running_loop().run_in_executor(None, _read_mai_notes_then_simai)
     if WIKI_VIDEOS:
         # the wiki's song list gives every Japanese song its English name for search; one crawl a week, off the loop
         asyncio.get_running_loop().run_in_executor(None, _crawl_wiki_titles)
         asyncio.get_running_loop().run_in_executor(None, _crawl_wiki_areas)
         asyncio.get_running_loop().run_in_executor(None, _warm_area_pictures)
-        asyncio.get_running_loop().run_in_executor(None, _read_mai_notes_then_simai)

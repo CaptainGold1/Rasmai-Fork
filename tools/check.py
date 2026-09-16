@@ -1536,10 +1536,16 @@ def _simai_trust():
 
 @check("reading the charts themselves is off until its owner turns it on")
 def _simai_beta():
+    import pathlib
+    import tempfile
+
     from rasmai.engine.analysis import ChartRef
     from rasmai.engine.insights.tags import chart_traits
+    from rasmai.storage.db import connection as store
     from rasmai.web.dashboard.beta import FEATURES, beta_state, set_beta, wants
 
+    was, store.DATABASE_PATH = store.DATABASE_PATH, pathlib.Path(tempfile.mkdtemp()) / "t.sqlite3"
+    store._database_ready = False
     problems = []
     user = "beta-check-user"
     if wants(user, "simai"):
@@ -1564,13 +1570,21 @@ def _simai_beta():
     named = {demand[2] for demand in DEMANDS}
     if {label for _dimension, label in chart_traits(chart, False)} & named:
         problems.append("a trait read from the notes appeared for someone who never asked for it")
+    store.DATABASE_PATH = was
+    store._database_ready = False
     return problems
 
 
 @check("a chart crawl against a site that has stopped answering gives up instead of going round again")
 def _simai_down():
+    import pathlib
+    import tempfile
+
+    from rasmai.storage.db import connection as store
     from rasmai.scraping import simai
 
+    was, store.DATABASE_PATH = store.DATABASE_PATH, pathlib.Path(tempfile.mkdtemp()) / "t.sqlite3"
+    store._database_ready = False
     asked = []
 
     def dead(chart_id):
@@ -1589,6 +1603,8 @@ def _simai_down():
             problems.append("a run that read nothing reported work done, so the caller would run it again")
     finally:
         simai.fetch_chart, simai._pending, simai.PAUSE = held_fetch, held_pending, held_pause
+        store.DATABASE_PATH = was
+        store._database_ready = False
     return problems
 
 
@@ -1633,6 +1649,58 @@ def _simai_model():
             problems.append(f"a weakness this plain should pass its own gate, got p={found['p']}")
     finally:
         simai.cached = held
+    return problems
+
+
+@check("a chart table kept in an older shape is re-read rather than trusted for good")
+def _stale_manifest():
+    import json
+    import pathlib
+    import tempfile
+
+    from rasmai.scraping import mai_notes, simai
+    from rasmai.storage.db import connection as store
+
+    was, store.DATABASE_PATH = store.DATABASE_PATH, pathlib.Path(tempfile.mkdtemp()) / "t.sqlite3"
+    store._database_ready = False
+    held_fetch = mai_notes.fetch
+    problems = []
+    try:
+        from rasmai.storage.db import source_state_get, source_state_set
+        fresh = {"a song|dx|master": {"n": 1, "t": 1, "h": 0, "s": 0, "u": 0, "b": 0, "c": "abc", "l": 13.0}}
+        asked = []
+
+        def answer(etag=""):
+            # the site only sends a body when it is not asked conditionally, which is the whole point:
+            # a stored copy in the wrong shape has to drop its tag or it will be told nothing changed
+            asked.append(etag)
+            return ("unchanged", None, etag) if etag else ("changed", dict(fresh), "tag-1")
+
+        mai_notes.fetch = answer
+
+        # what a bot running older code left behind: the right charts, without the fields added since
+        stale = {key: {f: v for f, v in row.items() if f not in ("c", "l")} for key, row in fresh.items()}
+        source_state_set(mai_notes.SOURCE, etag="tag-1",
+                         payload=json.dumps(stale, ensure_ascii=False, separators=(",", ":")))
+        mai_notes._forget()
+
+        if simai._pending({}):
+            problems.append("a chart with no id was queued for reading anyway")
+        charts = mai_notes.refresh_charts()
+        if not charts or not next(iter(charts.values())).get("c"):
+            problems.append("a stored copy in the old shape was handed back instead of being read again")
+        if asked and asked[0]:
+            problems.append(f"the old copy was re-read conditionally ({asked[0]!r}), so the site would answer 304 and change nothing")
+        held = json.loads(source_state_get(mai_notes.SOURCE)["payload"])
+        if held.get("v") != mai_notes.FORMAT:
+            problems.append(f"the re-read copy was stored without its shape, as {held.get('v')!r}")
+        if not simai._pending({}):
+            problems.append("nothing was queued for reading even after the chart table came back with ids")
+    finally:
+        mai_notes.fetch = held_fetch
+        mai_notes._forget()
+        store.DATABASE_PATH = was
+        store._database_ready = False
     return problems
 
 

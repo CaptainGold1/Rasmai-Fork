@@ -26,7 +26,7 @@ export type Sharing = {
   sections: { best50: boolean; traits: boolean; recent: boolean; areas: boolean };
 };
 
-export type BetaFeature = { key: string; label: string; note: string };
+export type BetaFeature = { key: string; label: string; note: string; ready?: boolean; status?: string };
 
 export type Beta = { on: Record<string, boolean>; features: BetaFeature[] };
 

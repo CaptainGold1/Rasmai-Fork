@@ -6,26 +6,51 @@ from rasmai.storage.db import get_user_settings, set_user_settings
 # is off until its owner turns it on, and turning it off puts everything back exactly as it was.
 FEATURES: Dict[str, Dict[str, str]] = {
     "simai": {
-        "label": "Chart reading",
-        "note": "Traits measured from the charts themselves, note by note, rather than from the tags "
-                "volunteers have written. Covers far more charts, and names things a tag cannot: long "
-                "holds, fast slides, spins, and passages that keep both hands working.",
+        "label": "Simai Chart Reading",
+        "note": "Traits measured from the chart Simai sheet music data, note by note, rather than from the tags. "
     },
 }
 
 
+def _simai_status() -> Dict[str, Any]:
+    """Whether chart reading has read enough to say anything yet, and how far along it is.
+
+    The charts are read a batch at a time over the first hour or so a bot is up, and nothing can be
+    measured until enough of them are in to know what a demanding chart looks like. Without this a
+    tester switches the feature on, sees their traits sit exactly as they were, and reasonably
+    concludes it is broken.
+    """
+    try:
+        from rasmai.scraping import simai
+        rows, levels = simai.cached()
+        read = sum(1 for row in rows.values() if row)
+        waiting = len(simai._pending(rows))
+        if levels:
+            left = f", {waiting:,} still to read" if waiting else ""
+            return {"ready": True, "status": f"{read:,} charts read{left}"}
+        if read + waiting == 0:
+            return {"ready": False, "status": "waiting for the chart list"}
+        return {"ready": False, "status": f"reading charts: {read:,} of {read + waiting:,}"}
+    except Exception:
+        return {"ready": False, "status": ""}
+
+
+READINESS = {"simai": _simai_status}
+
+
 def beta_state(user_id: str) -> Dict[str, Any]:
-    """Which beta features this person has switched on, and what there is to switch on.
+    """Which beta features this person has switched on, what there is to switch on, and whether it is ready.
 
     :param user_id: The Discord user id.
     :type user_id: str
     :rtype: Dict[str, Any]
     """
     on = get_user_settings(user_id).get("beta") or {}
-    return {
-        "on": {key: bool(on.get(key)) for key in FEATURES},
-        "features": [{"key": key, **spec} for key, spec in FEATURES.items()],
-    }
+    features = []
+    for key, spec in FEATURES.items():
+        ready = READINESS[key]() if key in READINESS else {"ready": True, "status": ""}
+        features.append({"key": key, **spec, **ready})
+    return {"on": {key: bool(on.get(key)) for key in FEATURES}, "features": features}
 
 
 def set_beta(user_id: str, wanted: Dict[str, Any]) -> Dict[str, Any]:

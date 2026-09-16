@@ -15,7 +15,10 @@ export function Beta({ state, onChange }: { state: BetaState; onChange: (next: B
     postJSON<BetaState>("/api/me/beta", { on: { [key]: on } })
       .then((next) => {
         onChange(next);
-        setNote(on ? "On from your next read. Use refresh above to see it now." : "Off from your next read.");
+        const feature = next.features.find((f) => f.key === key);
+        setNote(!on ? "Off from your next read."
+          : feature && feature.ready === false ? "On, but the charts are still being read. Your traits will change once that finishes."
+          : "On from your next read. Use refresh above to see it now.");
       })
       .catch((e: Error) => setNote(e.message || "could not save that"))
       .finally(() => setBusy(false));
@@ -45,6 +48,11 @@ export function Beta({ state, onChange }: { state: BetaState; onChange: (next: B
               <span>
                 <b>{feature.label}</b>
                 <span className="dim">{feature.note}</span>
+                {feature.status && (
+                  <span className={`mono hint${feature.ready ? " ok" : ""}`}>
+                    {feature.ready ? feature.status : `${feature.status} — nothing will change until this finishes`}
+                  </span>
+                )}
               </span>
             </label>
           </li>

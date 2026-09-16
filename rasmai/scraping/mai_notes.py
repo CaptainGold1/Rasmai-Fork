@@ -21,6 +21,11 @@ SITE = "https://mai-notes.com"
 MANIFEST_URL = f"{SITE}/data/manifest.json"
 SOURCE = "mainotes_charts"
 TTL = timedelta(days=1)
+
+# Bumped whenever `distil` keeps a different set of fields. The stored copy is only re-read when
+# the site says the manifest changed, so without this a copy distilled by older code would be kept
+# for good and never gain the new fields: the site has not changed, only what is wanted from it.
+FORMAT = 2
 TIMEOUT = 30
 
 _lock = threading.Lock()
@@ -180,9 +185,13 @@ def refresh_charts(force: bool = False) -> Dict[str, Dict[str, Any]]:
                 return stored
         except (ValueError, KeyError):
             pass
-        status, charts, etag = fetch(str(state.get("etag") or ""))
+        # a copy in the old shape is worth nothing, and asking conditionally would have the site
+        # answer 304 and leave it in place, so the tag is dropped along with it
+        tag = str(state.get("etag") or "") if stored else ""
+        status, charts, etag = fetch(tag)
         if status == "changed" and charts:
-            source_state_set(SOURCE, etag=etag, payload=json.dumps(charts, ensure_ascii=False, separators=(",", ":")))
+            source_state_set(SOURCE, etag=etag,
+                             payload=json.dumps({"v": FORMAT, "rows": charts}, ensure_ascii=False, separators=(",", ":")))
             _forget()
             logger.info("mai-notes: %d charts, %d with pattern tags", len(charts), sum(1 for c in charts.values() if c.get("g")))
             return charts
@@ -192,13 +201,18 @@ def refresh_charts(force: bool = False) -> Dict[str, Dict[str, Any]]:
 
 
 def _load(state: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """The stored chart table, or empty when it was distilled by code that kept different fields."""
     payload = str(state.get("payload") or "")
     if not payload:
         return {}
     try:
-        return json.loads(payload)
+        held = json.loads(payload)
     except ValueError:
         return {}
+    if not isinstance(held, dict) or held.get("v") != FORMAT:
+        return {}
+    rows = held.get("rows")
+    return rows if isinstance(rows, dict) else {}
 
 
 class ChartFacts:
