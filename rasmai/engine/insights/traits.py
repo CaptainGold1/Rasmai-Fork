@@ -274,7 +274,7 @@ def practice_for(axis: Dict[str, Any], chart_index: ChartIndex, profile: PlayPro
     :type limit: int
     :rtype: List[Dict[str, Any]]
     """
-    if axis.get("dimension") != "pattern":
+    if axis.get("dimension") not in ("pattern", "slide", "touch", "density", "tempo", "hold"):
         return []
     from rasmai.engine import patterns
     tag = str(axis["label"]).split(" (")[0]
@@ -286,7 +286,7 @@ def practice_for(axis: Dict[str, Any], chart_index: ChartIndex, profile: PlayPro
         if ref is not None:
             mine[ref.key] = song
     rows = []
-    for chart in patterns.charts_with(chart_index, tag):
+    for chart in patterns.charts_with(chart_index, tag, reading=profile.reading):
         if not (low - 1e-9 <= chart.constant <= high + 1e-9):
             continue
         song = mine.get(chart.key)

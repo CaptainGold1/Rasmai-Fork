@@ -241,6 +241,10 @@ def _read_simai() -> None:
     """
     try:
         from rasmai.scraping import simai
+        from rasmai.storage.db import squash_sheets
+        packed = squash_sheets()
+        if packed:
+            logger.info("simai: packed %d charts that were held as plain text", packed)
         simai.remeasure()    # a change to what is measured is answered from the copies already held
         while simai.due():
             if not simai.refresh():

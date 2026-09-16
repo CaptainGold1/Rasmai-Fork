@@ -1812,6 +1812,66 @@ def _simai_remeasure():
     return problems
 
 
+@check("traits read from the charts are searchable, and only for whoever switched that on")
+def _read_tags_searchable():
+    from rasmai.engine import patterns
+    from rasmai.engine.analysis import ChartIndex, ChartRef
+    from rasmai.engine.insights import chart_tags
+    from rasmai.scraping import simai
+
+    index = ChartIndex()
+    measured = {}
+    for n in range(30):
+        ref = ChartRef(title=f"chart {n}", chart_type="dx", difficulty="master", constant=13.0, level="13",
+                       notes=700, genre="", artist="", cover="", version=25, bpm=170.0)
+        index.add(ref)
+        measured["|".join(ref.key)] = {"spins": 0.1 if n % 3 == 0 else 0.0, "lv": 13.0}
+
+    held = simai.cached
+    simai.cached = lambda: (measured, {"spins": 0.01})
+    patterns._catalogue_memo.clear()
+    problems = []
+    try:
+        spun = index.get(("chart 0", "dx", "master"))
+        quiet = index.get(("chart 1", "dx", "master"))
+
+        off = {tag["label"] for tag in chart_tags(spun, False)}
+        on = {tag["label"] for tag in chart_tags(spun, True)}
+        if "charts with spins" in off:
+            problems.append("a trait read from the chart was shown to someone who never switched it on")
+        if "charts with spins" not in on:
+            problems.append("a chart full of spins was not tagged as one with the feature on")
+        if "charts with spins" in {tag["label"] for tag in chart_tags(quiet, True)}:
+            problems.append("a chart with no spins in it was tagged as having them")
+        if not any(tag.get("read") for tag in chart_tags(spun, True)):
+            problems.append("a trait read from the chart was not marked as read rather than written by hand")
+
+        # the catalogue, and searching it
+        patterns._catalogue_memo.clear()
+        if any(item["label"] == "charts with spins" for item in patterns.catalogue(index, False)):
+            problems.append("a trait read from the charts was listed for someone who never switched it on")
+        patterns._catalogue_memo.clear()
+        if not any(item["label"] == "charts with spins" for item in patterns.catalogue(index, True)):
+            problems.append("a trait read from the charts was missing from the list to search")
+        patterns._catalogue_memo.clear()
+        if patterns.resolve("spins", index, False) is not None:
+            problems.append("searching found a trait the searcher had not switched on")
+        patterns._catalogue_memo.clear()
+        found = patterns.resolve("spins", index, True)
+        if found != "charts with spins":
+            problems.append(f"searching for spins found {found!r}")
+        else:
+            charts = patterns.charts_with(index, found, reading=True)
+            if len(charts) != 10:
+                problems.append(f"ten of the thirty charts have spins, search returned {len(charts)}")
+            if patterns.charts_with(index, found, reading=False):
+                problems.append("charts came back for a trait the searcher had not switched on")
+    finally:
+        simai.cached = held
+        patterns._catalogue_memo.clear()
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:

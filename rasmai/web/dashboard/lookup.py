@@ -173,7 +173,8 @@ def chart_payload(cached: Optional[CachedAnalysis], title: str, chart_type: str 
         if facts:
             item["noteSplit"] = {name: int(facts.get(field) or 0) for field, name in
                                  (("t", "tap"), ("h", "hold"), ("s", "slide"), ("u", "touch"), ("b", "break"))}
-        item["patterns"] = [{**tag, "offset": trait_offsets.get(tag["label"])} for tag in patterns_engine.tags_for(ref)]
+        item["patterns"] = [{**tag, "offset": trait_offsets.get(tag["label"])}
+                            for tag in patterns_engine.tags_for(ref, patterns_engine.reading_for(cached))]
         if cached is not None:
             prediction = prediction_for(cached, ref, row)
             if prediction:
@@ -213,8 +214,9 @@ def patterns_payload(cached: Optional[CachedAnalysis], tag: str, level: str, dif
     from rasmai.engine import patterns
     from rasmai.bot.builders.charts import pattern_rows
     index = _lookup_index(cached)
-    catalogue = patterns.catalogue(index)
-    resolved = patterns.resolve(tag, index) if tag else None
+    reading = patterns.reading_for(cached)
+    catalogue = patterns.catalogue(index, reading)
+    resolved = patterns.resolve(tag, index, reading) if tag else None
     rows: List[Dict[str, Any]] = []
     if resolved:
         for row in pattern_rows(cached, resolved, level or None, difficulty or None):

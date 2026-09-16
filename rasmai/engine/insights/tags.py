@@ -63,7 +63,16 @@ def chart_traits(chart: ChartRef, reading: bool = False) -> List[Tuple[str, str]
 NOT_A_DEMAND = {"type", "era", "genre", "designer"}
 
 
-def chart_tags(chart: ChartRef) -> List[Dict[str, Any]]:
+def _read_traits(chart: ChartRef) -> List[Tuple[str, str]]:
+    """What the chart's own notes say it asks for; empty when it has not been read."""
+    try:
+        from rasmai.scraping import simai
+        return simai.chart_traits(chart.key)
+    except Exception:
+        return []
+
+
+def chart_tags(chart: ChartRef, reading: bool = False) -> List[Dict[str, Any]]:
     """What a chart asks of you, for showing on its page: the community's pattern tags first, then what its own numbers say.
 
     mai-notes' editors have tagged a third of the Master charts and half the Re:MASTERs, and
@@ -74,10 +83,14 @@ def chart_tags(chart: ChartRef) -> List[Dict[str, Any]]:
 
     :param chart: The chart being shown.
     :type chart: ChartRef
+    :param reading: Whether what the chart's own notes say joins the row.
+    :type reading: bool
     :rtype: List[Dict[str, Any]]
     """
-    tags = [{"dimension": dimension, "label": label, "community": dimension == "pattern"}
-            for dimension, label in chart_traits(chart) if dimension not in NOT_A_DEMAND]
+    read = {label for _dimension, label in _read_traits(chart)} if reading else set()
+    tags = [{"dimension": dimension, "label": label,
+             "community": dimension == "pattern" and label not in read, "read": label in read}
+            for dimension, label in chart_traits(chart, reading) if dimension not in NOT_A_DEMAND]
     tags.sort(key=lambda tag: not tag["community"])     # the editors' words lead, the measured ones follow
     return tags
 

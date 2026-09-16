@@ -35,7 +35,7 @@ def pattern_rows(cached: Optional[CachedAnalysis], tag: str, level: Optional[str
     index = _index(cached)
     loose = songs_by_loose_key(cached) if cached else {}
     rows: List[Dict[str, Any]] = []
-    for ref in patterns.charts_with(index, tag, level, difficulty):
+    for ref in patterns.charts_with(index, tag, level, difficulty, patterns.reading_for(cached)):
         song = song_for_chart(loose, ref) if cached else None
         rows.append({
             "title": ref.title, "chart_type": ref.chart_type, "difficulty": ref.difficulty, "level": ref.level, "constant": ref.constant,
@@ -60,7 +60,7 @@ def _line(index: int, r: Dict[str, Any]) -> str:
 
 def catalogue_embed(cached: Optional[CachedAnalysis]) -> discord.Embed:
     """Every pattern tag with how many charts carry it: the map of what the charts ask of you."""
-    items = patterns.catalogue(_index(cached))
+    items = patterns.catalogue(_index(cached), patterns.reading_for(cached))
     embed = discord.Embed(title="Traits", color=discord.Color.from_rgb(92, 211, 232))
     embed.description = ("What a chart asks of your hands. Pick one with `/charts pattern:` to see every chart that has it, with your own "
                          "scores beside them; the option searches Japanese and English, so `streams` and `乱打` both find it.\n"
@@ -111,14 +111,15 @@ async def build_patterns(cached: Optional[CachedAnalysis], owner_id: int, query:
             embed.set_author(name=cached.analyzer.player.name, icon_url=avatar_url)
         return embed, files, None
     index = _index(cached)
-    tag = patterns.resolve(query, index)
+    reading = patterns.reading_for(cached)
+    tag = patterns.resolve(query, index, reading)
     if tag is None:
-        near = patterns.suggest(str(query)[:2], index, limit=4)
+        near = patterns.suggest(str(query)[:2], index, limit=4, reading=reading)
         hint = (" Closest: " + ", ".join(f"`{item['english'] if item['community'] else item['label']}`" for item in near)) if near else ""
         embed = discord.Embed(title="Traits", description=f"No trait matches `{str(query)[:40]}`. Run `/charts` on its own to see them all.{hint}",
                               color=discord.Color.from_rgb(92, 211, 232))
         return embed, files, None
-    entry = next((item for item in patterns.catalogue(index) if item["tag"] == tag), None)
+    entry = next((item for item in patterns.catalogue(index, reading) if item["tag"] == tag), None)
     rows = pattern_rows(cached, tag, level, difficulty)
     pages = max(1, math.ceil(len(rows) / PAGE))
     page = max(0, min(page, pages - 1))
@@ -173,6 +174,9 @@ def _choice_name(item: Dict[str, Any]) -> str:
     return f"{item['label']} · measured · {item['charts']} charts"[:100]
 
 
-async def pattern_autocomplete(_interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
-    items = patterns.suggest(current, shared_index())
+async def pattern_autocomplete(interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+    # the person typing decides whether traits read from the charts are offered at all
+    from rasmai.bot.state.cache import cache_get
+    reading = patterns.reading_for(cache_get(str(interaction.user.id)))
+    items = patterns.suggest(current, shared_index(), reading=reading)
     return [app_commands.Choice(name=_choice_name(item), value=item["tag"][:100]) for item in items]
