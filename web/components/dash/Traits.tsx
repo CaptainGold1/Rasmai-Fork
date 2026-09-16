@@ -388,6 +388,9 @@ export function JudgementProfile({ data }: { data: JudgementProfileData | null }
         </Empty>
       ) : (
         <div className="two-up">
+          {/* six columns will not fit a phone, and this table keeps its shape rather than becoming
+              cards, so it scrolls sideways inside its own box instead of pushing the page out */}
+          <div className="scroll">
           <table className="tbl compact keep judge-profile">
             <thead>
               <tr>
@@ -412,6 +415,7 @@ export function JudgementProfile({ data }: { data: JudgementProfileData | null }
               ))}
             </tbody>
           </table>
+          </div>
           <div>
             <p className="hint">
               {weak
