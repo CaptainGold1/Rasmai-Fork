@@ -21,7 +21,7 @@ def english_of(tag: str) -> str:
     from rasmai.scraping.mai_notes import PATTERN_ENGLISH
     english = PATTERN_ENGLISH.get(tag, "")
     if not english and tag.endswith("配置"):
-        english = f"the {tag[:-2]} pattern"
+        english = f"the pattern from {tag[:-2]}"
     return english or tag
 
 

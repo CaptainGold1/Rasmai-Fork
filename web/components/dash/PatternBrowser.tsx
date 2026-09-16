@@ -105,7 +105,7 @@ export function PatternBrowser({ onOpen, open, setOpen, tag, setTag }: {
       {!error && !tag && (
         <p className="hint">
           Solid traits are tagged by maiノーツ's editors, who mark what a chart is made of: streams, jacks, hand swaps, slides that fire off a tap. They have covered
-          about one chart in ten, nearly all Master and above, so the dashed ones are measured from each chart's own note mix, tempo and density. Pick one to see
+          a third of the Master charts and half the Re:MASTERs, and little below that, so the dashed ones are measured from each chart's own note mix, tempo and density. Pick one to see
           every chart that has it, hardest first, with your score where you have one.
         </p>
       )}

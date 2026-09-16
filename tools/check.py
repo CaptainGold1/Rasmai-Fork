@@ -346,7 +346,7 @@ def _ladder():
 def _labels():
     from rasmai.scraping.mai_notes import english_label
     cases = {"乱打 (streams)": "streams",
-             "slow songs (up to 120 BPM)": "slow songs (up to 120 BPM)",
+             "slow songs (under 130 BPM)": "slow songs (under 130 BPM)",
              "charts by rioN": "charts by rioN"}
     return [f"english_label({k!r}) is {english_label(k)!r}, expected {v!r}"
             for k, v in cases.items() if english_label(k) != v]
@@ -1448,6 +1448,29 @@ def _stored_judgements():
             history.play_detail = held
     finally:
         scores.judgement_for = kept
+    return problems
+
+
+@check("a measured trait names what a chart asks for, never what it happens to be short of")
+def _bands():
+    from rasmai.engine.analysis import ChartRef
+    from rasmai.engine.insights.tags import chart_traits
+    from rasmai.scraping.mai_notes import note_traits
+
+    problems = []
+    # a chart light in every note type asks nothing of the hands for any of them, so it is named for none
+    if note_traits({"n": 1000, "t": 940, "h": 20, "s": 20, "u": 10, "b": 10}):
+        problems.append(f"a chart light in every note type was still given traits: {note_traits({'n': 1000, 't': 940, 'h': 20, 's': 20, 'u': 10, 'b': 10})}")
+    heavy = dict(note_traits({"n": 1000, "t": 700, "h": 40, "s": 200, "u": 30, "b": 30}))
+    if heavy.get("slide") != "slide-heavy charts" or len(heavy) != 1:
+        problems.append(f"a slide-heavy chart was read as {heavy}")
+    # and a chart in the middle of the game's tempo and note count is in no band at all: a band holding
+    # the bulk of the game sits on the player's own average and can never say anything
+    middle = [trait for trait in chart_traits(ChartRef(title="middling", chart_type="dx", difficulty="master", constant=13.0,
+                                                      level="13", notes=750, genre="", artist="", cover="", version=26, bpm=170.0))
+              if trait[0] in ("tempo", "density")]
+    if middle:
+        problems.append(f"a middle-of-the-road chart landed in a tempo or density band: {middle}")
     return problems
 
 

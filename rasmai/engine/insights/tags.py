@@ -6,7 +6,7 @@ from rasmai.engine.analysis import ChartRef
 def chart_traits(chart: ChartRef) -> List[Tuple[str, str]]:
     """The attributes a chart is judged on: tempo, note count, era, genre, designer, chart type.
 
-    When mai-notes has been read, the chart's note mix (break-heavy, slide-light) and the pattern
+    When mai-notes has been read, the chart's note mix (break-heavy, slide-heavy) and the pattern
     tags its editors gave it (streams, hard slides) join the list, so a weakness can be named as a
     pattern rather than only as a property of the song.
 
@@ -23,19 +23,20 @@ def chart_traits(chart: ChartRef) -> List[Tuple[str, str]]:
     if row:
         traits.extend(mai_notes.note_traits(row))
         traits.extend(mai_notes.pattern_traits(row))
+    # only the tails of tempo and density are named. A band holding a third of the game sits on the
+    # player's own average by construction, so it can never say anything, and it takes a place on the
+    # wheel that a trait with something to say would have had. These are the deciles and the quartiles
+    # of every chart at level 12 and above.
     if chart.bpm > 0:
-        if chart.bpm <= 120:
-            tempo = "slow songs (up to 120 BPM)"
-        elif chart.bpm <= 160:
-            tempo = "mid-tempo songs (121 to 160 BPM)"
-        elif chart.bpm <= 200:
-            tempo = "fast songs (161 to 200 BPM)"
-        else:
-            tempo = "very fast songs (over 200 BPM)"
-        traits.append(("tempo", tempo))
+        if chart.bpm <= 130:
+            traits.append(("tempo", "slow songs (under 130 BPM)"))
+        elif chart.bpm >= 210:
+            traits.append(("tempo", "very fast songs (over 210 BPM)"))
     if chart.notes > 0:
-        density = "light charts (under 550 notes)" if chart.notes < 550 else "medium charts (550 to 800 notes)" if chart.notes < 800 else "dense charts (800+ notes)"
-        traits.append(("density", density))
+        if chart.notes < 620:
+            traits.append(("density", "light charts (under 620 notes)"))
+        elif chart.notes >= 890:
+            traits.append(("density", "dense charts (890+ notes)"))
     if chart.version:
         era = "maimai-era songs (before DX)" if chart.version < 20 else "DX to FESTiVAL songs" if chart.version < 24 else "BUDDiES and newer songs"
         traits.append(("era", era))
@@ -53,10 +54,10 @@ NOT_A_DEMAND = {"type", "era", "genre", "designer"}
 def chart_tags(chart: ChartRef) -> List[Dict[str, Any]]:
     """What a chart asks of you, for showing on its page: the community's pattern tags first, then what its own numbers say.
 
-    mai-notes' editors have tagged about one chart in ten, almost all of them Master and above,
-    so a page that shows only those is blank for most charts. The note mix, tempo band and note
-    density are measured from the chart itself and cover nearly all of them, so they fill the row
-    out. They are marked as measured rather than community-written, because the two are not the
+    mai-notes' editors have tagged a third of the Master charts and half the Re:MASTERs, and
+    almost nothing below Expert, so a page that shows only those is blank for most charts. The
+    note mix, tempo band and note density are measured from the chart itself and cover nearly all
+    of them, so they fill the row out. They are marked as measured rather than community-written, because the two are not the
     same kind of claim.
 
     :param chart: The chart being shown.

@@ -47,17 +47,20 @@ PATTERN_ENGLISH = {
     "連続同始点(8分未満)": "same start point, under 8th", "連続同始点(8分以上)": "same start point, 8th or slower",
     "連続（交互）": "alternating slides", "往復スライド": "slides that double back", "早消し": "slides that vanish early",
     "速度違い": "slides at different speeds", "停止": "stopped slides",
+    "ウミユリ配置": "a slide you let go of at the start",
     "タッチ乱打": "touch streams", "タッチ流し": "touch sweeps", "タッチ回転": "touch rotations",
     "タッチ巻き込み": "touch notes easy to clip", "拘束タッチホールD": "touch holds that pin a hand",
     "拘束タッチホールド": "touch holds that pin a hand",
 }
 
-# note-type shares that count as notable, from the quartiles of every chart at level 12 and above
-SHARE_BANDS: Tuple[Tuple[str, str, float, str, float, str], ...] = (
-    ("b", "break",  0.022, "charts with few breaks",  0.064, "break-heavy charts"),
-    ("s", "slide",  0.079, "slide-light charts",      0.144, "slide-heavy charts"),
-    ("u", "touch",  0.001, "charts with no touch notes", 0.070, "touch-heavy charts"),
-    ("h", "hold",   0.042, "hold-light charts",       0.093, "hold-heavy charts"),
+# note-type shares that count as notable: the upper quartile of every chart at level 12 and above.
+# Only the top side is named. A chart that is light on a note type asks nothing of the player for
+# it, so "slide-light" was never a skill of its own, only the other half of "slide-heavy" said twice.
+SHARE_BANDS: Tuple[Tuple[str, str, float, str], ...] = (
+    ("b", "break", 0.064, "break-heavy charts"),
+    ("s", "slide", 0.145, "slide-heavy charts"),
+    ("u", "touch", 0.070, "touch-heavy charts"),
+    ("h", "hold",  0.094, "hold-heavy charts"),
 )
 
 
@@ -73,7 +76,7 @@ def pattern_label(tag: str) -> str:
     """
     english = PATTERN_ENGLISH.get(tag, "")
     if not english and tag.endswith("配置"):
-        english = f"the {tag[:-2]} pattern"
+        english = f"the pattern from {tag[:-2]}"
     return f"{tag} ({english})" if english else tag
 
 
@@ -215,8 +218,8 @@ class ChartFacts:
         row = self.loose.get(f"{folded}|{chart_type}|{difficulty}") if folded else None
         if row is not None:
             return row
-        # the editors have tagged about one chart in ten; dxrating counts the notes on all of them, so
-        # the note mix is known for the rest even where nobody has written a pattern tag for them
+        # the editors have tagged a third of the Master charts and almost nothing easier; dxrating counts
+        # the notes on all of them, so the note mix is known where nobody has written a pattern tag
         try:
             from rasmai.scraping import dxdata
             return dxdata.note_split(str(title), chart_type, difficulty)
@@ -248,7 +251,7 @@ def cached_facts() -> ChartFacts:
 
 
 def note_traits(row: Dict[str, Any]) -> List[Tuple[str, str]]:
-    """What a chart's note mix says about it: only the top and bottom quarter of each type is called out.
+    """What a chart's note mix says about it: only the top quarter of each note type is called out.
 
     :param row: One row of the table.
     :type row: Dict[str, Any]
@@ -257,14 +260,8 @@ def note_traits(row: Dict[str, Any]) -> List[Tuple[str, str]]:
     total = int(row.get("n") or 0)
     if total <= 0:
         return []
-    traits: List[Tuple[str, str]] = []
-    for field, dimension, low, low_label, high, high_label in SHARE_BANDS:
-        share = int(row.get(field) or 0) / total
-        if share <= low:
-            traits.append((dimension, low_label))
-        elif share >= high:
-            traits.append((dimension, high_label))
-    return traits
+    return [(dimension, label) for field, dimension, high, label in SHARE_BANDS
+            if int(row.get(field) or 0) / total >= high]
 
 
 def pattern_traits(row: Dict[str, Any]) -> List[Tuple[str, str]]:
