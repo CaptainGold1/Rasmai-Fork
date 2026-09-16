@@ -3,18 +3,30 @@ from typing import Any, Dict, List, Tuple
 from rasmai.engine.analysis import ChartRef
 
 
-def chart_traits(chart: ChartRef) -> List[Tuple[str, str]]:
+def chart_traits(chart: ChartRef, reading: bool = False) -> List[Tuple[str, str]]:
     """The attributes a chart is judged on: tempo, note count, era, genre, designer, chart type.
 
     When mai-notes has been read, the chart's note mix (break-heavy, slide-heavy) and the pattern
     tags its editors gave it (streams, hard slides) join the list, so a weakness can be named as a
     pattern rather than only as a property of the song.
 
+    With `reading` on, what the chart's own notes say joins them: how long its holds run, how fast
+    its slides travel, whether it keeps both hands working. That comes from parsing the chart rather
+    than from anyone's tag, so it reaches charts nobody has written about.
+
     :param chart: The chart being judged.
     :type chart: ChartRef
+    :param reading: Whether traits measured from the notes themselves are included.
+    :type reading: bool
     :rtype: List[Tuple[str, str]]
     """
     traits: List[Tuple[str, str]] = [("type", "DX charts" if chart.chart_type == "dx" else "standard charts")]
+    if reading:
+        try:
+            from rasmai.scraping import simai
+            traits.extend(simai.chart_traits(chart.key))
+        except Exception:            # the model must never fail because a chart would not parse
+            pass
     try:
         from rasmai.scraping import mai_notes
         row = mai_notes.cached_facts().get(chart.key)

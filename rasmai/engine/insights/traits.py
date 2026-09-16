@@ -67,7 +67,8 @@ class _TraitDesign:
 
     CONTROLS = 5      # intercept, is a play, log plays, constant, carries any pattern tag
 
-    def __init__(self, observations: Sequence[Dict[str, Any]], tags: Sequence[Tuple[str, str]], profile: PlayProfile):
+    def __init__(self, observations: Sequence[Dict[str, Any]], tags: Sequence[Tuple[str, str]], profile: PlayProfile,
+                 reading: bool = False):
         import math
         import numpy as np
         self.np = np
@@ -82,7 +83,7 @@ class _TraitDesign:
             row = key_row[o["key"]]
             if self.tagvec[row].any() or self.has_pattern[row]:
                 continue
-            for tag in chart_traits(o["chart"]):
+            for tag in chart_traits(o["chart"], reading):
                 if tag[0] == "pattern":
                     self.has_pattern[row] = 1.0
                 col = index.get(tag)
@@ -128,7 +129,8 @@ TRAIT_P = 0.02               # a trait's offset has to be rarer than this under 
 
 
 def trait_residuals(scored: Sequence[Any], chart_index: ChartIndex, profile: PlayProfile,
-                    recorded_plays: Optional[Sequence[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
+                    recorded_plays: Optional[Sequence[Dict[str, Any]]] = None,
+                    reading: bool = False) -> List[Dict[str, Any]]:
     """How far the player's scores sit from their own curve, per chart attribute, from every score they made.
 
     All tags are fitted together, so tags that ride on the same charts stop counting several
@@ -146,6 +148,8 @@ def trait_residuals(scored: Sequence[Any], chart_index: ChartIndex, profile: Pla
     :type scored: Sequence[Any]
     :param recorded_plays: Every stored play, as the history table returns them.
     :type recorded_plays: Optional[Sequence[Dict[str, Any]]]
+    :param reading: Whether traits measured from the charts themselves join the community's tags.
+    :type reading: bool
     :rtype: List[Dict[str, Any]]
     """
     import numpy as np
@@ -155,7 +159,7 @@ def trait_residuals(scored: Sequence[Any], chart_index: ChartIndex, profile: Pla
     charts_by_tag: Dict[Tuple[str, str], set] = {}
     plays_by_tag: Dict[Tuple[str, str], int] = {}
     for o in observations:
-        for tag in chart_traits(o["chart"]):
+        for tag in chart_traits(o["chart"], reading):
             if not _is_technique(*tag):
                 continue
             charts_by_tag.setdefault(tag, set()).add(o["key"])
@@ -164,7 +168,7 @@ def trait_residuals(scored: Sequence[Any], chart_index: ChartIndex, profile: Pla
     tags = sorted((tag for tag, keys in charts_by_tag.items() if len(keys) >= TRAIT_MIN_CHARTS), key=str)
     if not tags:
         return []
-    design = _TraitDesign(observations, tags, profile)
+    design = _TraitDesign(observations, tags, profile, reading)
     full = design.fit()
     # chance level: the same fit with every chart wearing another chart's tags
     exceed = np.zeros(len(tags))
@@ -326,7 +330,7 @@ def radar_axes(axes: Sequence[Dict[str, Any]], limit: int = 8, tentative: bool =
     return sorted(chosen, key=lambda axis: -float(axis["offset"]))
 
 
-def chart_trait_offset(traits: Sequence[Dict[str, Any]], chart: ChartRef) -> float:
+def chart_trait_offset(traits: Sequence[Dict[str, Any]], chart: ChartRef, reading: bool = False) -> float:
     """The traits' combined verdict on one chart: negative where the player tends to lose points.
 
     :param traits: The traits measured from the player's scores.
@@ -338,4 +342,4 @@ def chart_trait_offset(traits: Sequence[Dict[str, Any]], chart: ChartRef) -> flo
     if not traits:
         return 0.0
     lookup = {(t["dimension"], t["label"]): float(t["offset"]) for t in traits}
-    return sum(lookup.get(trait, 0.0) for trait in chart_traits(chart))
+    return sum(lookup.get(trait, 0.0) for trait in chart_traits(chart, reading))

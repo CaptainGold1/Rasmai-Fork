@@ -68,6 +68,7 @@ class PlayProfile:
     # chart attributes the player scores above or below their own curve on
     traits: List[Dict[str, Any]] = field(default_factory=list)
     trait_axes: List[Dict[str, Any]] = field(default_factory=list)   # every group with enough charts, threshold or not
+    reading: bool = False    # whether traits read from the charts' own notes were part of the fit
 
     def _local_expectation(self, constant: float) -> Tuple[Optional[float], float]:
         """Kernel-smoothed typical score from the buckets around `constant`, and how much data backs it.

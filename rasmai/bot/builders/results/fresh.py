@@ -74,6 +74,8 @@ async def run_full_analysis(
     analyzer.play_counts = load_play_counts(user_id, latest_play_times(analyzer))
     analyzer.recorded_plays = load_recorded_plays(user_id)
     analyzer.judgements = load_judgements(user_id)
+    from rasmai.web.dashboard.beta import wants as beta_wants
+    analyzer.reading = beta_wants(user_id, "simai")
     recommendations, value_charts = await asyncio.to_thread(analyzer.generate_recommendations)
     if await asyncio.to_thread(resolve_unknown, analyzer, tell):
         recommendations, value_charts = await asyncio.to_thread(analyzer.generate_recommendations)

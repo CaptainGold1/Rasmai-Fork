@@ -52,6 +52,7 @@ from rasmai.web.dashboard.admin import (  # noqa: F401
     account_detail,
     is_admin,
 )
+from rasmai.web.dashboard.beta import beta_state, set_beta, wants  # noqa: F401
 from rasmai.web.dashboard.public_profile import (  # noqa: F401
     public_payload,
     sharing_payload,

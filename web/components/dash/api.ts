@@ -26,6 +26,12 @@ export type Sharing = {
   sections: { best50: boolean; traits: boolean; recent: boolean; areas: boolean };
 };
 
+export type BetaFeature = { key: string; label: string; note: string };
+
+export type Beta = { on: Record<string, boolean>; features: BetaFeature[] };
+
+export type SimaiProgress = { read: number; refused: number; waiting: number; checkedAt?: string };
+
 export type Overview = {
   user: DiscordUser;
   linked: boolean;
@@ -39,6 +45,7 @@ export type Overview = {
   sessionExpired?: string;
   admin?: boolean;
   sharing?: Sharing;
+  beta?: Beta;
   playHistory?: number;
   judgements?: JudgementProfileData | null;
   sinceLast?: { since: string; ratingDelta: number; plays: number; newBests: number } | null;

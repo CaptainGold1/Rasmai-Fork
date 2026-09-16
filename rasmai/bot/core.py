@@ -225,6 +225,28 @@ def _read_mai_notes() -> None:
         logger.exception("mai-notes read failed")
 
 
+def _read_mai_notes_then_simai() -> None:
+    """The manifest first, then the charts it says can be read: the second needs the first."""
+    _read_mai_notes()
+    _read_simai()
+
+
+def _read_simai() -> None:
+    """The charts themselves, note by note, a batch at a time.
+
+    A chart never changes once published, so this works down the list and then has nothing left to
+    do but pick up whatever a new version adds. It runs after mai-notes because it needs the
+    manifest to know which charts have a file at all.
+    """
+    try:
+        from rasmai.scraping import simai
+        while simai.due():
+            if not simai.refresh():
+                break        # nothing came back: the site is down, so leave the rest for tomorrow
+    except Exception:
+        logger.exception("simai read failed")
+
+
 def _crawl_wiki_areas() -> None:
     """The wiki's area list (English names, reward ladders), refreshed weekly, for /area and the dashboard."""
     try:
@@ -298,4 +320,4 @@ async def on_ready():
         asyncio.get_running_loop().run_in_executor(None, _crawl_wiki_titles)
         asyncio.get_running_loop().run_in_executor(None, _crawl_wiki_areas)
         asyncio.get_running_loop().run_in_executor(None, _warm_area_pictures)
-        asyncio.get_running_loop().run_in_executor(None, _read_mai_notes)
+        asyncio.get_running_loop().run_in_executor(None, _read_mai_notes_then_simai)

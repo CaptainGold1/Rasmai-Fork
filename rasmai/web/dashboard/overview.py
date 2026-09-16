@@ -74,6 +74,7 @@ def servers_down_note() -> str:
 def overview_payload(user: Dict[str, Any], account: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     from rasmai.storage.db import touch_account
     from rasmai.web.dashboard.admin import is_admin
+    from rasmai.web.dashboard.beta import beta_state
     from rasmai.web.dashboard.public_profile import sharing_payload
     if account is not None:
         touch_account(user["id"])
@@ -104,6 +105,7 @@ def overview_payload(user: Dict[str, Any], account: Optional[Dict[str, Any]]) ->
         "refresh": refresh_jobs.status(user["id"]),
         "sessionExpired": account.get("sessionExpired") or "",
         "sharing": sharing_payload(user["id"], account),
+        "beta": beta_state(user["id"]),
     })
     payload["forecast"] = rating_forecast(history)
     cached = analysis_for_user(user["id"], account)

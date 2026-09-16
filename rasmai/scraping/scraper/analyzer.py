@@ -144,6 +144,7 @@ class MaimaiRatingAnalyzer(ScorePages, AreaPages, PlaylogPages, ProfilePages):
         self.play_profile = analysis.build_play_profile(
             self.songs, self.recent_songs, chart_index, self.current_version,
             play_counts=self.play_counts, recorded_plays=self.recorded_plays, judgements=self.judgements,
+            reading=bool(getattr(self, "reading", False)),
         )
         self.best50 = analysis.build_best50(self.songs)
         # needs the pools, so it is filled once they exist rather than inside the profile build

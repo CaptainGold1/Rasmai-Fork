@@ -75,6 +75,8 @@ class RefreshJobs:
                 analyzer.play_counts = load_play_counts(user_id)
                 analyzer.recorded_plays = load_recorded_plays(user_id)
                 analyzer.judgements = load_judgements(user_id)
+                from rasmai.web.dashboard.beta import wants as beta_wants
+                analyzer.reading = beta_wants(user_id, "simai")
                 tell("analysis", 0, 1)
                 recommendations, value_charts = analyzer.generate_recommendations()
                 if resolve_unknown(analyzer, tell):

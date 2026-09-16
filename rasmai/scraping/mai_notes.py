@@ -83,8 +83,9 @@ def pattern_label(tag: str) -> str:
 def distil(payload: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     """The manifest reduced to what the model uses, keyed "title|type|difficulty".
 
-    Only the note split and the pattern tags are kept; the rest of the manifest (top scores,
-    release dates, editor bookkeeping) is dropped so the stored copy stays small.
+    The note split, the pattern tags and the id of the chart file are kept; the rest of the
+    manifest (top scores, release dates, editor bookkeeping) is dropped so the stored copy
+    stays small.
 
     :param payload: The data to store or send.
     :type payload: Dict[str, Any]
@@ -110,6 +111,12 @@ def distil(payload: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         names = [tags[t] for t in (chart.get("tags") or []) if t in tags and tags[t]]
         if names:
             row["g"] = names
+        if chart.get("has_chart_data") and chart.get("id"):
+            row["c"] = str(chart["id"])      # the chart itself can be read, note by note, from this id
+            try:
+                row["l"] = float(chart.get("internal_level") or 0)
+            except (TypeError, ValueError):
+                row["l"] = 0.0
         out[key] = row
     return out
 

@@ -255,6 +255,8 @@ def analyzer_from_snapshot(user_id: str, account: Dict[str, Any]) -> Optional[An
     analyzer.play_counts = load_play_counts(user_id)
     analyzer.recorded_plays = load_recorded_plays(user_id)
     analyzer.judgements = load_judgements(user_id)
+    from rasmai.web.dashboard.beta import wants as beta_wants
+    analyzer.reading = beta_wants(user_id, "simai")
     analyzer.recent_songs = list(snapshot.get("recentPlays") or snapshot.get("recent") or [])
     analyzer.events_data = snapshot.get("areas") or {"areaEvents": [], "eventAreaEvents": []}
     try:

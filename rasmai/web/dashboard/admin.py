@@ -212,6 +212,15 @@ def guilds_payload() -> List[Dict[str, Any]]:
     return [{**g, "owner": known.get(g["ownerId"], {}).get("name", "")} for g in out]
 
 
+def _simai_progress() -> Dict[str, Any]:
+    """How far the chart crawl has got; empty when it has not started or cannot be read."""
+    try:
+        from rasmai.scraping import simai
+        return simai.progress()
+    except Exception:
+        return {}
+
+
 def admin_payload() -> Dict[str, Any]:
     """Everything the developer page shows: who is linked, what is stored, and what the process is doing.
 
@@ -300,6 +309,7 @@ def admin_payload() -> Dict[str, Any]:
         "failingReads": _named([{"userId": r["user_id"], "lastRead": r["read_at"], "error": r["error"]} for r in reads], known),
         "sources": [{"source": r["source"], "checkedAt": r["checked_at"], "bytes": int(r["bytes"] or 0),
                      "etag": bool(r["tagged"])} for r in sources],
+        "simai": _simai_progress(),
         "busiest": _named([{"userId": r["user_id"], "plays": int(r["plays"])} for r in busiest], known),
         "activity": activity,
         "growth": growth,

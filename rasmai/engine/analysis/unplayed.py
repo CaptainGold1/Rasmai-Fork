@@ -151,7 +151,7 @@ def recommend_unplayed(
         gain = best50.gain_if(key, is_new, expected_rating)
         odds_s = _normal_cdf((expected - 97.0) / sigma)
         affinity = profile.affinity(chart.chart_type, chart.genre, chart.difficulty)
-        trait_offset = chart_trait_offset(traits, chart) if focus else 0.0
+        trait_offset = chart_trait_offset(traits, chart, profile.reading) if focus else 0.0
         if focus == "weak" and trait_offset > -0.5:
             continue
         if focus == "strong" and trait_offset < 0.5:

@@ -30,16 +30,16 @@ export async function GET(request: Request, { params }: Params) {
   }
 }
 
-/** Refresh (start a score read) and unlink. */
+/** Refresh (start a score read), unlink, import, sharing and beta switches. */
 export async function POST(request: Request, { params }: Params) {
   if (!apiLimiter.allow(clientKey(request))) return json(429, { ok: false, error: "rate_limited" });
   if (!sameOrigin(request)) return json(403, { ok: false, error: "cross_origin" });
   const user = currentUser(request);
   if (!user) return json(401, { ok: false, error: "signed_out" });
   const path = tail((await params).rest);
-  if (!path || !["refresh", "unlink", "import", "sharing"].includes(path)) return json(404, { ok: false, error: "not_found" });
+  if (!path || !["refresh", "unlink", "import", "sharing", "beta"].includes(path)) return json(404, { ok: false, error: "not_found" });
   let body: unknown = {};
-  if (path === "sharing") {
+  if (path === "sharing" || path === "beta") {
     try {
       body = JSON.parse(await request.text());
     } catch {

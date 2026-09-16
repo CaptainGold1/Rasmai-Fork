@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { InstallHint } from "@/components/Pwa";
 import { postJSON, type Overview, type RefreshStatus } from "./api";
 import { Ago, Label, when } from "./bits";
+import { Beta } from "./Beta";
 import { Sharing } from "./Sharing";
 
 export function Account({ me, refresh, onRefresh }: { me: Overview; refresh: RefreshStatus | null; onRefresh: (s: RefreshStatus) => void }) {
@@ -11,6 +12,7 @@ export function Account({ me, refresh, onRefresh }: { me: Overview; refresh: Ref
   const [confirm, setConfirm] = useState(false);
   const [note, setNote] = useState("");
   const [sharing, setSharing] = useState(me.sharing ?? { on: false, url: "", sections: { best50: true, traits: false, recent: false, areas: false } });
+  const [beta, setBeta] = useState(me.beta ?? { on: {}, features: [] });
   const start = () => {
     setBusy(true);
     postJSON<RefreshStatus>("/api/me/refresh")
@@ -112,6 +114,8 @@ export function Account({ me, refresh, onRefresh }: { me: Overview; refresh: Ref
         </section>
 
       {me.sharing && <Sharing state={sharing} onChange={setSharing} />}
+
+      {beta.features.length > 0 && <Beta state={beta} onChange={setBeta} />}
 
       <section className="ledger">
         <div className="ledger-head">

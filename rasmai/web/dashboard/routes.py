@@ -16,6 +16,7 @@ from rasmai.web.dashboard.picks import new_charts_payload, picks_payload
 from rasmai.web.dashboard.refresh import refresh_jobs
 from rasmai.web.dashboard.scores import charts_payload, export_payload, play_payload, recent_payload
 from rasmai.web.dashboard.imports import import_payload
+from rasmai.web.dashboard.beta import beta_state, set_beta
 from rasmai.web.dashboard.public_profile import set_sharing
 
 logger = logging.getLogger(__name__)
@@ -160,11 +161,15 @@ def handle_post(handler: Any, path: str, user: Dict[str, Any], payload: Optional
     :type user: Dict[str, Any]
     :rtype: bool
     """
-    if path not in ("/internal/me/refresh", "/internal/me/unlink", "/internal/me/import", "/internal/me/sharing"):
+    if path not in ("/internal/me/refresh", "/internal/me/unlink", "/internal/me/import",
+                    "/internal/me/sharing", "/internal/me/beta"):
         return False
     account = get_connected_account(user["id"])
     if account is None:
         handler._send_json(404, {"ok": False, "error": "not_linked"})
+        return True
+    if path == "/internal/me/beta":
+        handler._send_json(200, set_beta(user["id"], (payload or {}).get("on") or {}))
         return True
     if path == "/internal/me/sharing":
         body = payload or {}

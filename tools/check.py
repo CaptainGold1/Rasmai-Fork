@@ -1474,6 +1474,168 @@ def _bands():
     return problems
 
 
+@check("a chart in simai is read the way maimai counts it")
+def _simai_parse():
+    from rasmai.engine.simai import parse
+
+    problems = []
+    # one of each thing the notation can say, at 120 BPM where a {4} comma is half a second:
+    # a tap, a hold of one beat, a slide off a star, a break, a touch, and two struck together
+    chart = parse("(120){4}1,2h[4:1],3-5[8:1],4b,C,{8}6/7,E")
+    counts = chart.counts()
+    # the star of a slide is played as a tap, so 1, the star of 3-5, 6 and 7 are four taps
+    want = {"tap": 4, "hold": 1, "slide": 1, "touch": 1, "break": 1}
+    if counts != want:
+        problems.append(f"the sampler chart read as {counts}, expected {want}")
+    if len(chart.notes) != 8:
+        problems.append(f"the sampler chart has 8 notes, read as {len(chart.notes)}")
+    held = [n for n in chart.notes if n.kind == "hold"]
+    if held and abs(held[0].duration - 0.5) > 1e-6:
+        problems.append(f"a one-beat hold at 120 BPM lasts half a second, read as {held[0].duration}")
+    together = [n for n in chart.notes if n.each > 1]
+    if len(together) != 2:
+        problems.append(f"6/7 is two notes struck together, read as {len(together)}")
+
+    # a slide written through several corners is judged once, so it is one note and not one each
+    chained = parse("(120){4}1-4-7[8:1],E").counts()
+    if chained != {"tap": 1, "hold": 0, "slide": 1, "touch": 0, "break": 0}:
+        problems.append(f"a chained slide read as {chained}, expected one star and one slide")
+
+    # a break mark after the length belongs to the slide, not to the star that fired it
+    broken = parse("(120){4}1-5[8:1]b,E").counts()
+    if broken != {"tap": 1, "hold": 0, "slide": 0, "touch": 0, "break": 1}:
+        problems.append(f"a break slide read as {broken}, expected a plain star and a break slide")
+
+    # a length written as a wait then a travel, which one chart in the game actually uses
+    waited = parse("(120){4}1-5[0.375##1.9821],E")
+    travel = [n for n in waited.notes if n.kind == "slide"]
+    if not travel or abs(travel[0].duration - 1.9821) > 1e-6:
+        problems.append(f"a slide that waits before it moves should travel for 1.9821s, read as {travel}")
+    return problems
+
+
+@check("a chart read differently from the source that published it is thrown away, not used")
+def _simai_trust():
+    from rasmai.scraping import simai
+
+    good = "(120){4}1,2h[4:1],3-5[8:1],4b,C,{8}6/7,E"
+    # what maiノーツ says is on it: four taps, a hold, a slide, a touch, a break, eight in all
+    agrees = {"t": 4, "h": 1, "s": 1, "u": 1, "b": 1, "n": 8, "l": 13.0}
+    problems = []
+    if simai.read_chart(good, agrees) is None:
+        problems.append("a chart both sides count the same way was refused")
+    for field in ("t", "h", "s", "u", "b", "n"):
+        disagrees = dict(agrees)
+        disagrees[field] = agrees[field] + 1
+        if simai.read_chart(good, disagrees) is not None:
+            problems.append(f"a chart the source counts differently on {field!r} was used anyway")
+    if simai.read_chart("", agrees) is not None:
+        problems.append("an empty chart was read as though it held something")
+    return problems
+
+
+@check("reading the charts themselves is off until its owner turns it on")
+def _simai_beta():
+    from rasmai.engine.analysis import ChartRef
+    from rasmai.engine.insights.tags import chart_traits
+    from rasmai.web.dashboard.beta import FEATURES, beta_state, set_beta, wants
+
+    problems = []
+    user = "beta-check-user"
+    if wants(user, "simai"):
+        problems.append("a feature nobody switched on was reported as on")
+    state = beta_state(user)
+    if set(state["on"]) != set(FEATURES) or any(state["on"].values()):
+        problems.append(f"a fresh account should have every beta off, got {state['on']}")
+    if set_beta(user, {"simai": True})["on"].get("simai") is not True:
+        problems.append("switching a beta on did not take")
+    if not wants(user, "simai"):
+        problems.append("a beta switched on was not seen as on")
+    if set_beta(user, {"nonsense": True})["on"].get("nonsense") is not None:
+        problems.append("a feature that does not exist was stored anyway")
+    set_beta(user, {"simai": False})
+    if wants(user, "simai"):
+        problems.append("switching a beta off did not take")
+
+    # and with it off, nothing measured from the notes reaches the model
+    chart = ChartRef(title="anything", chart_type="dx", difficulty="master", constant=13.0, level="13",
+                     notes=800, genre="", artist="", cover="", version=26, bpm=170.0)
+    from rasmai.engine.simai import DEMANDS
+    named = {demand[2] for demand in DEMANDS}
+    if {label for _dimension, label in chart_traits(chart, False)} & named:
+        problems.append("a trait read from the notes appeared for someone who never asked for it")
+    return problems
+
+
+@check("a chart crawl against a site that has stopped answering gives up instead of going round again")
+def _simai_down():
+    from rasmai.scraping import simai
+
+    asked = []
+
+    def dead(chart_id):
+        asked.append(chart_id)
+        return None
+
+    pending = [(f"song {n}|dx|master", f"id{n}", {"t": 1, "h": 0, "s": 0, "u": 0, "b": 0, "n": 1}) for n in range(50)]
+    held_fetch, held_pending, held_pause = simai.fetch_chart, simai._pending, simai.PAUSE
+    simai.fetch_chart, simai._pending, simai.PAUSE = dead, lambda known: pending, 0.0
+    problems = []
+    try:
+        out = simai.refresh(40)
+        if len(asked) > simai.MISSES:
+            problems.append(f"a dead site was asked {len(asked)} times, expected to stop after {simai.MISSES}")
+        if out:
+            problems.append("a run that read nothing reported work done, so the caller would run it again")
+    finally:
+        simai.fetch_chart, simai._pending, simai.PAUSE = held_fetch, held_pending, held_pause
+    return problems
+
+
+@check("a weakness that only the charts' own notes can see is found, and only when asked for")
+def _simai_model():
+    import random
+
+    from rasmai.engine.analysis import ChartIndex, ChartRef, build_play_profile, calculate_rating
+    from rasmai.scraping import simai
+    from rasmai.storage.models import SongInfo
+
+    # a hundred charts, a third of them full of spins, and a player who drops a point on exactly those.
+    # Nothing else marks those charts out, so a trait can only find this by reading the notes.
+    measured, index, songs = {}, ChartIndex(), []
+    random.seed(5)
+    spun = 0
+    for n in range(120):
+        spins = 0.05 if n % 3 == 0 else 0.0
+        spun += bool(spins)
+        key = f"chart {n}|dx|master"
+        measured[key] = {"spins": spins, "lv": 13.0}
+        index.add(ChartRef(title=f"chart {n}", chart_type="dx", difficulty="master", constant=13.0,
+                           level="13", notes=700, genre="", artist="", cover="", version=25, bpm=170.0))
+        accuracy = round(99.2 - (1.0 if spins else 0.0) + random.uniform(-0.15, 0.15), 4)
+        songs.append(SongInfo(name=f"chart {n}", chart_type="dx", difficulty_type="master", accuracy=accuracy,
+                              is_new=False, level="13", difficulty=13.0, rating=calculate_rating(13.0, accuracy)))
+
+    held = simai.cached
+    simai.cached = lambda: (measured, {"spins": 0.01})
+    problems = []
+    try:
+        off = build_play_profile(songs, [], index, 26, reading=False)
+        if any(axis["label"] == "charts with spins" for axis in off.trait_axes):
+            problems.append("a trait from the notes was measured for a player who never switched it on")
+        on = build_play_profile(songs, [], index, 26, reading=True)
+        found = next((a for a in on.trait_axes if a["label"] == "charts with spins"), None)
+        if found is None:
+            problems.append(f"the weakness planted on {spun} charts was not measured at all")
+        elif found["offset"] > -0.3:
+            problems.append(f"a point lost on every spin chart came out as {found['offset']:+.2f}, which is not it")
+        elif not found["verified"]:
+            problems.append(f"a weakness this plain should pass its own gate, got p={found['p']}")
+    finally:
+        simai.cached = held
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:
