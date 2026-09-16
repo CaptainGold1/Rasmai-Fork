@@ -128,9 +128,14 @@ CUT = 0.75
 # and the quarter is taken over charts at this level and above, as the note mix bands are
 HARD = 12.0
 
+# kept beside a reading but not measured from the notes: the chart's level, and how far the reading
+# sits from the count its source publishes
+BOOKKEEPING = ("lv", "off")
+
 # bumped whenever a measure changes meaning, so stored readings taken by older code are dropped
-# rather than compared against levels they were never measured for
-VERSION = 1
+# rather than compared against levels they were never measured for. The charts themselves are kept,
+# so a bump costs a re-read of what is already held and not another crawl.
+VERSION = 2
 
 
 def thresholds(rows: Iterable[Dict[str, float]]) -> Dict[str, float]:
@@ -151,7 +156,7 @@ def thresholds(rows: Iterable[Dict[str, float]]) -> Dict[str, float]:
         if float(row.get("lv") or 0) < HARD:
             continue
         for key, value in row.items():
-            if key != "lv":
+            if key not in BOOKKEEPING:
                 columns.setdefault(key, []).append(float(value))
     out: Dict[str, float] = {}
     for key, values in columns.items():

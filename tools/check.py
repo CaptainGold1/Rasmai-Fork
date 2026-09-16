@@ -1514,29 +1514,57 @@ def _simai_parse():
     return problems
 
 
-@check("a chart read differently from the source that published it is thrown away, not used")
+@check("a chart is refused only when the reader could not follow it, and disagreement is recorded")
 def _simai_trust():
+    from rasmai.engine.simai import parse
     from rasmai.scraping import simai
 
     good = "(120){4}1,2h[4:1],3-5[8:1],4b,C,{8}6/7,E"
-    # what maiノーツ says is on it: four taps, a hold, a slide, a touch, a break, eight in all
     agrees = {"t": 4, "h": 1, "s": 1, "u": 1, "b": 1, "n": 8, "l": 13.0}
     problems = []
-    if simai.read_chart(good, agrees) is None:
-        problems.append("a chart both sides count the same way was refused")
-    for field in ("t", "h", "s", "u", "b", "n"):
-        disagrees = dict(agrees)
-        disagrees[field] = agrees[field] + 1
-        if simai.read_chart(good, disagrees) is not None:
-            problems.append(f"a chart the source counts differently on {field!r} was used anyway")
+    reading = simai.read_chart(good, agrees)
+    if reading is None:
+        problems.append("a chart the reader followed from end to end was refused")
+    elif reading.get("off") != 0.0:
+        problems.append(f"a reading that matches its source was recorded as {reading.get('off')!r} away from it")
+
+    # the counts come from a wiki rather than from the file, so the two differ on a chart now and
+    # then. That is worth recording and is not grounds for throwing the reading away.
+    apart = simai.read_chart(good, {**agrees, "n": 10})
+    if apart is None:
+        problems.append("a reading was thrown away because its source counted the chart differently")
+    elif abs(float(apart.get("off") or 0) + 0.2) > 1e-6:
+        problems.append(f"eight notes against a published ten is -0.2, recorded as {apart.get('off')!r}")
+
+    # what is refused: notation the reader could not follow at all
+    if not parse("(120){4}1,~~~,2,E").skipped:
+        problems.append("notation the reader does not know went unnoticed")
+    if simai.read_chart("(120){4}1,~~~,2,E", agrees) is not None:
+        problems.append("a chart holding notation the reader could not follow was used anyway")
     if simai.read_chart("", agrees) is not None:
         problems.append("an empty chart was read as though it held something")
-    # a chart published with a total and no split of it is judged on the total alone, not refused
-    no_split = {"t": 0, "h": 0, "s": 0, "u": 0, "b": 0, "n": 8, "l": 13.0}
-    if simai.read_chart(good, no_split) is None:
-        problems.append("a chart whose source published no split was refused instead of judged on its total")
-    if simai.read_chart(good, {**no_split, "n": 9}) is not None:
-        problems.append("a chart whose total disagrees was used anyway when no split was published")
+    if parse(good).skipped:
+        problems.append("a chart made only of ordinary notation was reported as unreadable")
+
+    held = {"a": {"off": 0.001}, "b": {"off": 0.05}, "c": {"off": -0.3}, "d": {}}
+    if simai.disputed(held) != 2:
+        problems.append(f"two of those readings sit far from their source, counted {simai.disputed(held)}")
+
+    # a served file sometimes carries the next difficulty after the one that was asked for. Read
+    # straight through, the two count as one chart: a 954-note Master read as 1,549 that way.
+    from rasmai.engine.simai.parse import sections
+    both = "(120){4}1,2,3,4,E&inote_5=(120){4}1,2,E"
+    if len(sections(both)) != 2:
+        problems.append(f"a file holding two charts was read as {len(sections(both))}")
+    if len(parse(both).notes) != 4:
+        problems.append(f"reading a two-chart file straight through made {len(parse(both).notes)} notes of the first four")
+    four = {"t": 4, "h": 0, "s": 0, "u": 0, "b": 0, "n": 4, "l": 13.0}
+    two = {**four, "n": 2}
+    for wanted, label in ((four, "four"), (two, "two")):
+        picked = simai.read_chart(both, wanted)
+        # a zero here is the answer, not a missing one, so it is read with a default rather than "or"
+        if picked is None or abs(float(picked.get("off", 1.0))) > 1e-9:
+            problems.append(f"the {label}-note chart in a two-chart file was not the one picked")
     return problems
 
 

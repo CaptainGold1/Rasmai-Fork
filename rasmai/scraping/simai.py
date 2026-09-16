@@ -101,12 +101,15 @@ def fetch_chart(chart_id: str) -> Optional[str]:
 
 
 def read_chart(text: str, expected: Dict[str, Any]) -> Optional[Dict[str, float]]:
-    """A chart's measured features, or None when the reading cannot be trusted.
+    """A chart's measured features, or None when the notation could not be read.
 
-    maiノーツ publishes its own count of the taps, holds, slides, touches and breaks on a chart.
-    That count is worked out from the same file by someone else's code, so it is an independent
-    answer: when the parse here disagrees with it, the parse is wrong somewhere and the chart is
-    dropped rather than have numbers nobody checked go into the model.
+    maiノーツ publishes its own note counts, taken from a wiki rather than from the file it serves,
+    so the two disagree on a chart now and then and the disagreement is not always ours: one chart
+    is counted there at 954 notes where the file plainly holds 1,549. A count is therefore recorded
+    as a measure of agreement rather than used to throw the reading away.
+
+    What is refused is a chart the reader itself could not follow: notation it did not recognise, or
+    a file it found nothing in. That is the case where the numbers really would be made up.
 
     :param text: The chart in simai.
     :type text: str
@@ -114,23 +117,38 @@ def read_chart(text: str, expected: Dict[str, Any]) -> Optional[Dict[str, float]
     :type expected: Dict[str, Any]
     :rtype: Optional[Dict[str, float]]
     """
-    chart = parse(text)
-    if not chart.notes:
+    chart = _best(text, int(expected.get("n") or 0))
+    if chart is None or not chart.notes or chart.skipped:
         return None
-    if len(chart.notes) != int(expected.get("n") or 0):
-        return None
-    counts = chart.counts()
-    split = [(counts[mine], int(expected.get(theirs) or 0)) for mine, theirs in
-             (("tap", "t"), ("hold", "h"), ("slide", "s"), ("touch", "u"), ("break", "b"))]
-    # a few dozen charts are published with a total but no split of it. Checking against the split
-    # there means checking against zeros, which refuses a reading that may be perfectly good; the
-    # total is the check that still stands, and it is the strict one.
-    if any(theirs for _mine, theirs in split):
-        if any(mine != theirs for mine, theirs in split):
-            return None
     measured = distil(chart)
     measured["lv"] = float(expected.get("l") or 0)
+    published = int(expected.get("n") or 0)
+    if published:
+        # how far this reading sits from the published count, kept so the gap can be watched
+        measured["off"] = round((len(chart.notes) - published) / published, 4)
     return measured
+
+
+def _best(text: str, published: int):
+    """The chart in a served file, picking between them when it holds more than one.
+
+    Which difficulty a section belongs to cannot be read off the notation, so where there is a
+    choice the published count settles it: the section nearest that is the one that was asked for.
+    """
+    from rasmai.engine.simai.parse import sections
+    parts = sections(text)
+    if len(parts) == 1:
+        return parse(parts[0])
+    read = [parse(part) for part in parts]
+    read = [chart for chart in read if chart.notes] or read
+    if not published:
+        return max(read, key=lambda chart: len(chart.notes))
+    return min(read, key=lambda chart: abs(len(chart.notes) - published))
+
+
+def disputed(rows: Dict[str, Any], limit: float = 0.02) -> int:
+    """How many readings sit further than `limit` from the count maiノーツ publishes."""
+    return sum(1 for row in rows.values() if row and abs(float(row.get("off") or 0)) > limit)
 
 
 def _pending(known: Dict[str, Any]) -> List[Tuple[str, str, Dict[str, Any]]]:
@@ -271,6 +289,7 @@ def progress() -> Dict[str, int]:
         held = {"charts": 0, "bytes": 0}
     rate = pace()
     return {"read": trusted, "refused": len(rows) - trusted, "waiting": waiting,
+            "disputed": disputed(rows),
             "sheets": held["charts"], "sheetBytes": held["bytes"],
             "rate": round(rate, 3), "eta": int(waiting / rate) if rate and waiting else 0,
             "checked_at": str((source_state_get(SOURCE) or {}).get("checked_at") or "")}

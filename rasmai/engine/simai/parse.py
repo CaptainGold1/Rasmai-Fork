@@ -43,6 +43,7 @@ class Chart:
     bpm: float = 0.0
     seconds: float = 0.0
     tempo_changes: int = 0
+    skipped: int = 0             # characters the reader could not make sense of: 0 means it understood the lot
 
     def counts(self) -> Dict[str, int]:
         """The note split the way maimai counts it, so it can be checked against a source that knows.
@@ -95,6 +96,26 @@ def _duration(spec: str, bpm: float) -> float:
         return 0.0
 
 
+def sections(text: str) -> List[str]:
+    """The charts in a served file, in order.
+
+    A file usually holds the one chart that was asked for, but sometimes carries another difficulty
+    after it as ``&inote_5=...``. Read straight through, the two count as one chart, which is what
+    made a 954-note Master read as 1,549. Which of them was wanted cannot be told from the notation,
+    so they come back separately for the caller to choose between.
+
+    :param text: The file as the site served it.
+    :type text: str
+    :rtype: List[str]
+    """
+    out = []
+    for part in text.split("&"):
+        body = part.split("=", 1)[1] if re.match(r"\s*[A-Za-z_][\w]*\s*=", part) else part
+        if body.strip():
+            out.append(body)
+    return out or [""]
+
+
 def parse(text: str) -> Chart:
     """Every note in a simai chart, with the second it falls on.
 
@@ -103,6 +124,7 @@ def parse(text: str) -> Chart:
     :rtype: Chart
     """
     text = re.sub(r"\|\|.*", "", text)
+    text = sections(text)[0]
     text = re.sub(r"\s+", "", text)
     if text.endswith("E"):
         text = text[:-1]              # a chart is ended with a lone E, which is not a touch note
@@ -152,6 +174,9 @@ def parse(text: str) -> Chart:
             index += 1                # both join a note to the moment before it
         else:
             notes, moved = _note(text, index, clock, bpm)
+            if moved < 0:
+                chart.skipped += 1
+                moved = -moved
             slot.extend(notes)
             index = moved if moved > index else index + 1
     flush()
@@ -174,7 +199,7 @@ def _note(text: str, index: int, clock: float, bpm: float) -> Tuple[List[Note], 
         index += 1
         kind = "tap"
     else:
-        return [], index + 1
+        return [], -(index + 1)   # nothing a note can start with: negative says so to the caller
     brk = ex = False
     held = 0.0
     slides: List[Note] = []
