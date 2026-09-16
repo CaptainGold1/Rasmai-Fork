@@ -1414,6 +1414,43 @@ def _warm_up():
     return problems
 
 
+@check("a judgement page read once opens from storage, without asking maimai again")
+def _stored_judgements():
+    import rasmai.web.dashboard.scores as scores
+    from rasmai.bot.state.cache import CachedAnalysis
+
+    stored = {"achievement": 98.5, "fast": 3, "late": 9, "combo": 400, "max_combo": 700, "sync": 0, "max_sync": 0,
+              "notes": {"tap": {"critical": 10, "perfect": 5, "great": 1, "good": 0, "miss": 0}}}
+    asked = []
+
+    class Analyzer:
+        recent_songs = []      # the play has scrolled off the fifty maimai still lists
+
+    kept = scores.judgement_for
+    scores.judgement_for = lambda user_id, idx: dict(stored) if idx == "kept" else None
+    cached = CachedAnalysis(user_id="1", region="intl", analyzer=Analyzer(), recommendations=[], value_charts=[])   # type: ignore[arg-type]
+    problems = []
+    try:
+        import rasmai.bot.builders.history as history
+        held = history.play_detail
+        history.play_detail = lambda c, idx: asked.append(idx) or dict(stored)
+        try:
+            page = scores.play_payload(cached, "kept")
+            if page is None:
+                problems.append("a stored page did not open once the site stopped listing the play")
+            elif not page.get("lost"):
+                problems.append("a stored page opened without what each note type cost")
+            if asked:
+                problems.append(f"maimai was asked for a page already stored: {asked}")
+            if scores.play_payload(cached, "never") is not None:
+                problems.append("a play with nothing stored and nothing listed should not open")
+        finally:
+            history.play_detail = held
+    finally:
+        scores.judgement_for = kept
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:

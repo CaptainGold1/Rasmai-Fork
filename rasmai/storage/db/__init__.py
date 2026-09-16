@@ -22,4 +22,5 @@ from rasmai.storage.db.settings import (
 )
 from rasmai.storage.db.sources import (chart_videos_get, chart_videos_set, site_notice_get, site_notice_set,
                                        source_state_get, source_state_set)
-from rasmai.storage.db.judgements import save_judgement, load_judgements, judged_ids, delete_judgements
+from rasmai.storage.db.judgements import (save_judgement, load_judgements, judged_ids, judgement_for, judged_marks,
+                                          delete_judgements)

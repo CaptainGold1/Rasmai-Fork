@@ -204,6 +204,12 @@ def get_database_connection() -> sqlite3.Connection:
                     )
                     """
                 )
+                for column in ("combo INTEGER NOT NULL DEFAULT 0", "max_combo INTEGER NOT NULL DEFAULT 0",
+                               "sync INTEGER NOT NULL DEFAULT 0", "max_sync INTEGER NOT NULL DEFAULT 0"):
+                    try:
+                        setup.execute(f"ALTER TABLE play_judgements ADD COLUMN {column}")
+                    except sqlite3.OperationalError:
+                        pass      # already there
             _database_ready = True
 
     connection = sqlite3.connect(DATABASE_PATH, timeout=10)

@@ -6,13 +6,15 @@ from rasmai.engine.losses import note_losses
 from rasmai.bot.state.snapshots import compact_snapshot
 from rasmai.engine import analysis
 from rasmai.engine.analysis import rank_for
-from rasmai.storage.db import load_play_history, load_rating_history
+from rasmai.storage.db import judged_marks, judgement_for, load_play_history, load_rating_history
 from rasmai.util import _json_safe
 from rasmai.web.dashboard.analysis import _chart_key
 
 
 def play_payload(cached: CachedAnalysis, idx: str) -> Optional[Dict[str, Any]]:
-    """One play's judgement page with what each note type cost; None when the id is not on the player's recent list.
+    """One play's judgement page with what each note type cost; None when nothing is stored and the site no longer lists it.
+
+    A page read once is kept for good, so this answers from storage without touching maimai DX NET.
 
     :param cached: The player's analysis, held in memory.
     :type cached: CachedAnalysis
@@ -21,9 +23,12 @@ def play_payload(cached: CachedAnalysis, idx: str) -> Optional[Dict[str, Any]]:
     :rtype: Optional[Dict[str, Any]]
     """
     from rasmai.bot.builders.history import play_detail
-    if not any(str(record.get("idx", "")) == idx for record in cached.analyzer.recent_songs or []):
-        return None
-    detail = dict(play_detail(cached, idx))
+    detail = judgement_for(cached.user_id, idx)
+    if detail is None:
+        # never read before, so it has to come from the site, and only the fifty plays still listed there have a page
+        if not any(str(record.get("idx", "")) == idx for record in cached.analyzer.recent_songs or []):
+            return None
+        detail = dict(play_detail(cached, idx))
     detail["lost"] = note_losses(detail.get("notes") or {}, float(detail.get("achievement") or 0))
     return _json_safe(detail)
 
@@ -71,8 +76,13 @@ def recent_payload(user_id: str, cached: Optional[CachedAnalysis], limit: int = 
         return []
     a = cached.analyzer if cached else None
     by_key: Dict[Tuple[str, str, str], Any] = {}
-    # the site's id for a play, while it is still on the fifty-play recent list: that is what its judgement page is read by
+    # the site's id for a play: from the fifty it still lists, and from every page already kept, so a play
+    # that scrolled off months ago still opens the judgements that were stored for it
     idx_of: Dict[Tuple[Tuple[str, str, str], str], str] = {}
+    for (chart_key, when), idx in judged_marks(user_id).items():
+        parts = chart_key.split("|")
+        if len(parts) == 3:
+            idx_of[((parts[0], parts[1], parts[2]), when)] = idx
     if a is not None:
         for song in a.songs:
             by_key[_chart_key(song)] = song
