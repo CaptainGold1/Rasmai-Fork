@@ -325,6 +325,7 @@ export function JudgementProfile({ data }: { data: JudgementProfileData | null }
               <tr>
                 <th>notes</th>
                 <th className="c-num">of the notes</th>
+                <th className="c-num">worth</th>
                 <th className="c-num">of the loss</th>
                 <th className="c-num">lost per 100</th>
                 <th className="c-num">clean</th>
@@ -335,6 +336,7 @@ export function JudgementProfile({ data }: { data: JudgementProfileData | null }
                 <tr key={t.kind} className={t.kind === data.weak ? "weak" : ""}>
                   <td className="mono kind">{t.kind}</td>
                   <td className="c-num mono">{Math.round(t.share * 100)}%</td>
+                  <td className="c-num mono dim">{Math.round((t.stakeShare ?? t.share) * 100)}%</td>
                   <td className="c-num mono">{Math.round(t.lossShare * 100)}%</td>
                   <td className="c-num mono">{t.per100.toFixed(2)}</td>
                   <td className="c-num mono dim">{Math.round(t.clean * 100)}%</td>
@@ -345,9 +347,16 @@ export function JudgementProfile({ data }: { data: JudgementProfileData | null }
           <div>
             <p className="hint">
               {weak
-                ? `${weak.kind[0].toUpperCase()}${weak.kind.slice(1)} notes carry ${Math.round(weak.lossShare * 100)}% of what you lose while being ${Math.round(weak.share * 100)}% of the notes: that is the type costing you most.`
-                : "No note type costs you out of proportion to its share of the notes."}
+                ? `${weak.kind[0].toUpperCase()}${weak.kind.slice(1)} notes carry ${Math.round(weak.lossShare * 100)}% of what you lose while being worth ${Math.round((weak.stakeShare ?? weak.share) * 100)}% of the chart: that is the type costing you most.`
+                : "No note type costs you more than it is worth. A break is worth five taps, so it is measured against that rather than against how many breaks there are."}
             </p>
+            {Boolean(data.bonusPerPlay) && (
+              <p className="hint">
+                The break bonus costs you {(data.bonusPerPlay ?? 0).toFixed(2)} a play, {Math.round((data.bonusShare ?? 0) * 100)}% of everything you lose. Only a
+                critical earns a break its whole slice of it, so this is the price of not chasing them rather than breaks going wrong, and it is kept out of
+                the note types above.
+              </p>
+            )}
             <ul className="bars">
               <li>
                 <span>fast</span>

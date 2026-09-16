@@ -1872,6 +1872,78 @@ def _read_tags_searchable():
     return problems
 
 
+@check("not hunting critical breaks is not a weakness, but dropping breaks still is")
+def _break_bonus():
+    from rasmai.engine.judgements import judgement_profile, judgement_traits
+    from rasmai.engine.losses import WEIGHTS, note_losses
+
+    kept = {"critical": 1.0, "perfect": 0.5, "great": 0.4, "good": 0.3, "miss": 0.0}
+
+    def play(great=0, good=0, miss=0, criticals=0.35):
+        """One play, the same everywhere except on the breaks, scored the way maimai would."""
+        notes = {}
+        for kind, n in (("tap", 700), ("hold", 40), ("slide", 60), ("touch", 20)):
+            g, b, m = round(n * 0.012), round(n * 0.002), round(n * 0.001)
+            notes[kind] = {"critical": n - g - b - m, "perfect": 0, "great": g, "good": b, "miss": m}
+        breaks = 30
+        landed = breaks - great - good - miss
+        crit = round(landed * criticals)
+        notes["break"] = {"critical": crit, "perfect": landed - crit, "great": great, "good": good, "miss": miss}
+        total = sum(WEIGHTS[k] * sum(v.values()) for k, v in notes.items())
+        base = 100.0 / total
+        lost = sum(row["good"] * 3 * base + row["miss"] * 5 * base if kind == "break"
+                   else WEIGHTS[kind] * base * (row["great"] / 5 + row["good"] / 2 + row["miss"])
+                   for kind, row in notes.items())
+        lost += sum(count * (1 - kept[judged]) / breaks for judged, count in notes["break"].items())
+        return {"notes": notes, "achievement": round(101.0 - lost, 4), "fast": 8, "late": 9}
+
+    def breaks_of(rows):
+        return next((t["offset"] for t in judgement_traits(rows) if t["label"] == "break notes"), None)
+
+    problems = []
+    # every break landed; they are simply perfect rather than critical, which is how the game is
+    # played by anyone not chasing the bonus. This must not read as a weakness.
+    ordinary = [play() for _ in range(40)]
+    offset = breaks_of(ordinary)
+    if offset is None:
+        problems.append("breaks were not measured at all")
+    elif offset < -0.2:
+        problems.append(f"landing every break but not as a critical was called a weakness at {offset:+.2f}")
+    if judgement_profile(ordinary)["weak"] == "break":
+        problems.append("the panel named breaks the worst type for a player who did not drop one")
+
+    # and with no critical at all, which is the same player and a lower score
+    none_critical = [play(criticals=0.0) for _ in range(40)]
+    offset = breaks_of(none_critical)
+    if offset is not None and offset < -0.2:
+        problems.append(f"never earning a critical break was called a weakness at {offset:+.2f}")
+    profile = judgement_profile(none_critical)
+    if profile["bonusPerPlay"] <= 0:
+        problems.append("the bonus a critical earns was not reported as its own loss")
+    if profile["bonus"] <= 0 or profile["bonusShare"] <= 0:
+        problems.append("the bonus was measured at nothing when every break was a plain perfect")
+
+    # dropping breaks is still a weakness, and has to be found
+    dropped = [play(great=3, good=2, miss=1) for _ in range(40)]
+    offset = breaks_of(dropped)
+    if offset is None or offset > -0.4:
+        problems.append(f"a player dropping breaks every play was measured at {offset}")
+    if judgement_profile(dropped)["weak"] != "break":
+        problems.append("the panel did not name breaks for a player dropping them every play")
+
+    # and the bonus is only told apart when it is asked for
+    counts = ordinary[0]["notes"]
+    together = note_losses(counts, ordinary[0]["achievement"])
+    apart = note_losses(counts, ordinary[0]["achievement"], bonus_apart=True)
+    if "bonus" in together:
+        problems.append("the bonus was split out without being asked for, which changes what callers see")
+    if abs(sum(together.values()) - sum(apart.values())) > 1e-6:
+        problems.append("splitting the bonus out changed how much the play cost in total")
+    if apart.get("break", 0) > together.get("break", 0):
+        problems.append("taking the bonus off the breaks made them cost more")
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:

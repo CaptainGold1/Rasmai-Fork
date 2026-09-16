@@ -95,8 +95,12 @@ export type Overview = {
 
 export type JudgementProfileData = {
   plays: number;
-  types: { kind: string; notes: number; share: number; lossShare: number; per100: number; clean: number; tilt: number }[];
+  types: { kind: string; notes: number; share: number; lossShare: number; stakeShare?: number;
+           per100: number; clean: number; tilt: number }[];
   weak: string | null;
+  bonus?: number;          // the slice of the 1% only a critical break earns
+  bonusPerPlay?: number;
+  bonusShare?: number;
   fast: number;
   late: number;
   lateShare: number | null;
