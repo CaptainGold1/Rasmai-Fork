@@ -2078,6 +2078,111 @@ def _hsts():
     return problems
 
 
+@check("the charts come out of one clone of the repository, and the site is only asked for the rest")
+def _simai_bulk():
+    import pathlib
+    import tempfile
+    import types
+
+    from rasmai.scraping import mai_notes, simai_bulk
+    from rasmai.storage.db import connection as store
+
+    # one maidata file carries a whole song: every difficulty under its own &inote_N=
+    song = """&title=Test Song[DX]
+&wholebpm=120
+&cabinet=DX
+
+&inote_2=
+(120){4}1,2,3,4,E
+
+&inote_5=
+(120){8}1,2,3,4,5,6,7,8,E
+"""
+    root = pathlib.Path(tempfile.mkdtemp())
+    (root / "genre" / "1_test_DX").mkdir(parents=True)
+    (root / "genre" / "1_test_DX" / "maidata.txt").write_text(song, encoding="utf-8")
+    was_checkout, simai_bulk.CHECKOUT = simai_bulk.CHECKOUT, root
+    was_cache, simai_bulk.CACHE = simai_bulk.CACHE, pathlib.Path(tempfile.mkdtemp())
+    was_charts, simai_bulk.CHARTS = simai_bulk.CHARTS, simai_bulk.CACHE / "charts.json.gz"
+    was_stamp, simai_bulk.STAMP = simai_bulk.STAMP, simai_bulk.CACHE / "taken.json"
+    was_update, simai_bulk.update = simai_bulk.update, lambda force=False: 0
+    was_discard, simai_bulk.discard = simai_bulk.discard, lambda: None
+    was_facts = mai_notes.cached_facts
+    was_path, store.DATABASE_PATH = store.DATABASE_PATH, pathlib.Path(tempfile.mkdtemp()) / "t.sqlite3"
+    store._database_ready = False
+    problems = []
+    try:
+        found = dict(simai_bulk.charts())
+        if set(found) != {"test song|dx|basic", "test song|dx|master"}:
+            problems.append(f"a song's difficulties were not split into charts the manifest could match: {list(found)}")
+        if found and "8" not in found.get("test song|dx|master", ""):
+            problems.append("the difficulties were read in the wrong order, so a chart carries another's notes")
+
+        # the cache holds every chart the clone had, including ones the manifest does not name yet,
+        # so a version that names them later needs no download
+        simai_bulk._keep(found, "abc123")
+        if set(simai_bulk.cached()) != set(found):
+            problems.append("the cache on disk does not hold what the clone did")
+        if int(simai_bulk._taken().get("charts") or 0) != len(found):
+            problems.append("the cache does not say how much it holds, so an update cannot tell")
+        big = {f"song {n}|dx|master": "(120){8}1,2,3,4,5,6,7,8," * 40 for n in range(200)}
+        plain = sum(len(key.encode()) + len(body.encode()) for key, body in big.items())
+        simai_bulk._keep(big, "abc123")
+        packed = simai_bulk.CHARTS.stat().st_size
+        if packed > plain / 4:
+            problems.append(f"the cache is {packed} bytes for {plain} of notation, so it is barely packed")
+        if set(simai_bulk.cached()) != set(big):
+            problems.append("the cache did not come back the way it went in")
+        simai_bulk._keep(found, "abc123")
+
+        # only the charts the manifest lists are measured, because nothing else can check them
+        facts = {"test song|dx|master": {"n": 8, "l": 13.0, "c": "abc"}}
+        mai_notes.cached_facts = lambda: types.SimpleNamespace(exact=facts)
+        known = {}
+        read = simai_bulk.load(known)
+        if read != 1 or set(known) != {"test song|dx|master"}:
+            problems.append(f"the cache measured {read} charts and held {list(known)}, expected only the listed one")
+        if simai_bulk.load(known):
+            problems.append("a chart already measured was measured out of the cache a second time")
+
+        # the checkout itself is not kept: what is worth keeping is in the packed cache by then
+        source = (ROOT / "rasmai" / "scraping" / "simai_bulk.py").read_text(encoding="utf-8")
+        if "finally:" not in source or "discard()" not in source:
+            problems.append("the clone is read without being deleted afterwards")
+
+        # git writes its pack files read-only, and a delete that walks away from those leaves the
+        # whole clone behind while reporting nothing
+        import os as _os
+        import stat as _stat
+        pretend = pathlib.Path(tempfile.mkdtemp()) / "repo" / ".git" / "objects"
+        pretend.mkdir(parents=True)
+        locked = pretend / "pack"
+        locked.write_bytes(b"x")
+        _os.chmod(locked, _stat.S_IREAD)
+        simai_bulk.discard, simai_bulk.CHECKOUT = was_discard, pretend.parent.parent
+        try:
+            simai_bulk.discard()
+            if simai_bulk.CHECKOUT.exists():
+                problems.append("a checkout with read-only files in it was left on disk")
+        finally:
+            simai_bulk.discard, simai_bulk.CHECKOUT = (lambda: None), root
+            _os.chmod(locked, _stat.S_IWRITE) if locked.exists() else None
+
+        # and what the clone did not have is still left for the site to be asked for
+        facts["other song|dx|master"] = {"n": 8, "l": 13.0, "c": "def"}
+        simai_bulk.load(known)
+        if "other song|dx|master" in known:
+            problems.append("a chart the clone does not hold was marked as read")
+    finally:
+        simai_bulk.CHECKOUT, simai_bulk.update = was_checkout, was_update
+        simai_bulk.CACHE, simai_bulk.CHARTS, simai_bulk.STAMP = was_cache, was_charts, was_stamp
+        simai_bulk.discard = was_discard
+        mai_notes.cached_facts = was_facts
+        store.DATABASE_PATH = was_path
+        store._database_ready = False
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:

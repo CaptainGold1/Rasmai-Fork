@@ -7,6 +7,7 @@ __pycache__/
 data/
 debug/
 otoge_cache/
+simai_cache/
 .git/
 *.md
 web/node_modules/

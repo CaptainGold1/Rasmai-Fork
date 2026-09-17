@@ -171,6 +171,14 @@ def refresh(budget: int = BATCH) -> Dict[str, Any]:
     """
     with _lock:
         known = _stored()
+        # the repository first: it holds most of the game in one clone, and what it does not hold
+        # is what the site is asked for
+        try:
+            from rasmai.scraping import simai_bulk
+            if simai_bulk.load(known):
+                _save(known)
+        except Exception:
+            logger.exception("simai: reading the chart repository failed, carrying on with the site")
         waiting = _pending(known)
         if not waiting:
             return known
