@@ -39,6 +39,8 @@ class ChartRef:
     bpm: float = 0.0
     designer: str = ""       # otoge-db credits standard charts only; dxrating fills the DX ones in
     intl_known: bool = False  # whether a source that lists regions per chart, rather than per song, said so
+    listed_intl: bool = True  # what the chart database itself says, before the per-chart source overrides it
+    regions: str = "jic"      # cabinets that have it, as initials: j Japan, i international, c China
     released: str = ""       # the day the chart arrived, ISO 8601
     locked: bool = False     # the song has to be unlocked before it can be picked at all
 
@@ -79,11 +81,19 @@ class ChartIndex:
     def playable(self, chart: ChartRef) -> bool:
         if chart.deleted:
             return False
+        if self.region != "intl":
+            return True
         # otoge-db tracks the Japanese game, which gets a version months before everyone else, so its
         # region flag lags for charts of the version the player is on and is distrusted there. dxrating
-        # lists regions per chart rather than per song and is taken at its word, which is what keeps a
-        # Japan-only chart of the current version out of the picks.
-        if self.region == "intl" and not chart.intl and (chart.intl_known or not self.current_version or chart.version != self.current_version):
+        # lists regions per chart rather than per song, which is what keeps a Japan-only chart of the
+        # current version out of the picks.
+        if not chart.intl and (chart.intl_known or not self.current_version or chart.version != self.current_version):
+            return False
+        # Neither source is right on its own. dxrating said LOSTPHANTASIA was everywhere when the chart
+        # database had it down as Japan only, and a player on the international version was offered it.
+        # Where the database says a song never left Japan, that stands unless the chart is of the
+        # version the player is on, which is the one place the database's own flag is known to lag.
+        if not chart.listed_intl and (not self.current_version or chart.version != self.current_version):
             return False
         return True
 
@@ -209,6 +219,8 @@ def build_chart_index(songs_data: Dict[str, Dict[str, Any]], region: Optional[st
                 version=version,
                 intl=(facts.get("i", 1) != 0) if facts else intl,
                 intl_known=bool(facts),
+                listed_intl=intl,
+                regions=str(facts.get("g", "jic")) if facts else ("jic" if intl else "jc"),
                 deleted=deleted,
                 bpm=bpm,
                 designer=designer if designer != "-" else "",

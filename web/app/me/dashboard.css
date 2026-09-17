@@ -342,6 +342,8 @@ html[data-standalone] .dash .ident { margin-top: 16px; }
 /* a chart that is not here, or not here any more: said once, in the colour the site warns in */
 .chart-flag { display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1.5px solid var(--gold-edge); border-radius: 999px; color: var(--gold-edge); font-family: var(--font-mono), monospace; font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; vertical-align: 1px; }
 :root[data-theme="dark"] .chart-flag { color: var(--gold); border-color: var(--gold); }
+/* a chart everyone can play is the common case, so it says so without shouting */
+.chart-flag.chart-flag-quiet, :root[data-theme="dark"] .chart-flag.chart-flag-quiet { color: var(--muted); border-color: var(--line); }
 /* what the chart is made of: one band of note types, the counts under it in the same colours */
 .note-mix { margin-top: 12px; }
 .note-bar { display: flex; height: 12px; border: 2px solid var(--edge); border-radius: 999px; overflow: hidden; background: var(--paper-2); }

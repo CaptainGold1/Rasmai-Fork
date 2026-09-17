@@ -343,6 +343,7 @@ export type ChartDetail = {
   notes: number;
   version: number;
   intl: boolean;
+  regions?: string[];   // cabinets that have it: jp, intl, cn
   deleted: boolean;
   designer: string;
   is_new: boolean;

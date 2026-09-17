@@ -63,8 +63,15 @@ def distil(payload: Dict[str, Any]) -> Dict[str, Any]:
             designer = str(sheet.get("noteDesigner") or "").strip()
             if designer and designer != "-":
                 facts["d"] = designer
-            if not (sheet.get("regions") or {}).get("intl", True):
+            regions = sheet.get("regions") or {}
+            if not regions.get("intl", True):
                 facts["i"] = 0      # available everywhere is the common case, so only absence is written down
+            # and which cabinets it is on at all, for a page that wants to say so rather than guess:
+            # the initials of the regions that have it, "jic" for a song everyone can play
+            where = "".join(letter for letter, key in (("j", "jp"), ("i", "intl"), ("c", "cn"))
+                            if regions.get(key, True))
+            if where != "jic":
+                facts["g"] = where
             counts = sheet.get("noteCounts") or {}
             if counts.get("total"):
                 facts["n"] = [int(counts.get(field) or 0) for field in ("tap", "hold", "slide", "touch", "break")]

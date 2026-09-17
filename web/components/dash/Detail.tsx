@@ -44,6 +44,21 @@ function NoteMix({ split }: { split: Record<string, number> | null }) {
   );
 }
 
+const REGION_NAMES: Record<string, string> = { jp: "Japan", intl: "International", cn: "China" };
+
+/** Which cabinets have this chart. The search spans every region, so the page says where each song
+ *  can actually be played rather than leaving a player to find out at the machine. */
+function Where({ regions, intl }: { regions?: string[]; intl?: boolean }) {
+  const where = regions?.length ? regions : intl === false ? ["jp", "cn"] : ["jp", "intl", "cn"];
+  const everywhere = where.length >= 3;
+  return (
+    <span className={`chart-flag${everywhere ? " chart-flag-quiet" : ""}`} title="where this chart can be played">
+      {everywhere ? "every region" : where.map((r) => REGION_NAMES[r] ?? r).join(" · ")}
+      {where.length === 1 ? " only" : ""}
+    </span>
+  );
+}
+
 const TIER: Record<string, string> = { basic: "Basic", advanced: "Advanced", expert: "Expert", master: "Master", remaster: "Re:Master" };
 
 export const RANK_LINES: [string, number][] = [["S", 97], ["S+", 98], ["SS", 99], ["SS+", 99.5], ["SSS", 100], ["SSS+", 100.5]];
@@ -88,7 +103,7 @@ export function Detail({ song, chart, selected, onSelect, onTrait }: { song: Son
         {chart.notes ? ` · ${num(chart.notes)} notes` : ""}
         {chart.designer ? ` · charted by ${chart.designer}` : ""}
         {chart.released ? ` · added ${arrived(chart.released)}` : ""}
-        {!chart.intl && <span className="chart-flag">Japan only</span>}
+        <Where regions={chart.regions} intl={chart.intl} />
         {chart.deleted && <span className="chart-flag">removed from the game</span>}
       </p>
       <NoteMix split={chart.noteSplit} />

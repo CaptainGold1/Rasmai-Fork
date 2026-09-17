@@ -18,6 +18,24 @@ _video_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="chart-video"
 _TIER_LABEL = {"basic": "Basic", "advanced": "Advanced", "expert": "Expert", "master": "Master", "remaster": "Re:Master"}
 
 
+def _regions(ref: Any) -> List[str]:
+    """Which cabinets have this chart: "jp", "intl", "cn".
+
+    The two sources disagree often enough to matter - one of them had LOSTPHANTASIA on every cabinet
+    while the other had it down as Japan only, and a player abroad was offered it - so a chart counts
+    as being outside Japan only where both of them say so, which is the rule the picks follow too.
+    """
+    where = str(getattr(ref, "regions", "") or "jic")
+    out = []
+    if "j" in where:
+        out.append("jp")
+    if "i" in where and getattr(ref, "intl", True) and getattr(ref, "listed_intl", True):
+        out.append("intl")
+    if "c" in where:
+        out.append("cn")
+    return out
+
+
 def _lookup_index(cached: Optional[CachedAnalysis]) -> Any:
     from rasmai.bot.builders.charts import shared_index   # the bot's index and search tables; only wanted when it runs
     return cached.analyzer.chart_index if cached else shared_index()
@@ -163,6 +181,7 @@ def chart_payload(cached: Optional[CachedAnalysis], title: str, chart_type: str 
         item: Dict[str, Any] = dict(row)
         item.update({
             "title": ref.title, "notes": ref.notes, "version": ref.version, "intl": ref.intl, "deleted": ref.deleted,
+            "regions": _regions(ref),
             "released": ref.released,
             "designer": chart_designer(record, ref), "is_new": bool(current_version) and ref.version == current_version,
             "usual": profile.expected_for(ref.constant, ref.difficulty) if profile and profile.sample_size else None,

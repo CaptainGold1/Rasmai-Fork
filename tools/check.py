@@ -2512,6 +2512,48 @@ def _trait_wording():
     return problems
 
 
+@check("a chart is only offered abroad when both sources agree it left Japan, and the page says where it is")
+def _region_gate():
+    from rasmai.engine.analysis.charts import ChartIndex, ChartRef
+    from rasmai.web.dashboard.lookup import _regions
+
+    def chart(**over):
+        base = dict(title="LOSTPHANTASIA", chart_type="dx", difficulty="master", constant=12.9, level="12+",
+                    notes=700, genre="", artist="", cover="", version=24)
+        base.update(over)
+        return ChartRef(**base)
+
+    problems = []
+    index = ChartIndex("intl")
+    index.current_version = 26
+    # the case it was found on: dxrating had it on every cabinet, the chart database had it as Japan
+    # only, and dxrating's word alone put it in front of a player who could not play it
+    if index.playable(chart(intl=True, intl_known=True, listed_intl=False)):
+        problems.append("a chart the database says never left Japan was offered to a player abroad")
+    if not index.playable(chart(intl=True, intl_known=True, listed_intl=True)):
+        problems.append("a chart both sources say is abroad was withheld")
+    # the one place the database's own flag is known to lag: the version the player is on
+    if not index.playable(chart(intl=True, intl_known=True, listed_intl=False, version=26)):
+        problems.append("a chart of the player's own version was withheld on a flag known to lag there")
+    if index.playable(chart(intl=False, intl_known=True, listed_intl=True)):
+        problems.append("a chart dxrating says is Japan only was offered to a player abroad")
+
+    # and nothing is withheld from a player on the cabinet the database tracks
+    japan = ChartIndex("jp")
+    japan.current_version = 27
+    if not japan.playable(chart(intl=False, intl_known=True, listed_intl=False)):
+        problems.append("a Japanese player was refused a Japanese chart")
+
+    # the lookup spans every region, so it has to say which ones have each chart
+    if _regions(chart(intl=True, listed_intl=True, regions="jic")) != ["jp", "intl", "cn"]:
+        problems.append("a chart on every cabinet was not said to be")
+    if "intl" in _regions(chart(intl=True, listed_intl=False, regions="jic")):
+        problems.append("a chart only one source calls international was shown as international")
+    if _regions(chart(intl=False, listed_intl=False, regions="jc")) != ["jp", "cn"]:
+        problems.append("a Japan and China chart was not said to be one")
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:
