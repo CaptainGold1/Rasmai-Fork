@@ -7,7 +7,8 @@ import re
 from rasmai.security import import_limiter, public_reason, refresh_limiter
 from rasmai.storage.db import delete_connected_account, get_connected_account
 from rasmai.bot.state.cache import forget_analysis
-from rasmai.web.dashboard.admin import account_detail, accounts_payload, admin_payload, guilds_payload, is_admin
+from rasmai.web.dashboard.admin import (account_detail, accounts_payload, admin_payload, guilds_payload,
+                                        is_admin, start_update)
 from rasmai.web.dashboard.analysis import analysis_for_user
 from rasmai.web.dashboard.areas import areas_payload
 from rasmai.web.dashboard.lookup import chart_payload, patterns_payload, search_payload, video_payload
@@ -166,8 +167,18 @@ def handle_post(handler: Any, path: str, user: Dict[str, Any], payload: Optional
     :rtype: bool
     """
     if path not in ("/internal/me/refresh", "/internal/me/unlink", "/internal/me/import",
-                    "/internal/me/sharing", "/internal/me/beta"):
+                    "/internal/me/sharing", "/internal/me/beta", "/internal/me/admin/update"):
         return False
+    if path == "/internal/me/admin/update":
+        # about the bot's own chart databases rather than about an account, so it is answered before
+        # the linked-account check, and refused the same way the developer page itself is
+        if not is_admin(user["id"]):
+            logger.warning("chart database update refused for %s", user["id"])
+            handler._send_json(404, {"ok": False, "error": "not_found"})
+            return True
+        started = start_update(str((payload or {}).get("source") or ""))
+        handler._send_json(202 if started.get("ok") else 409, started)
+        return True
     account = get_connected_account(user["id"])
     if account is None:
         handler._send_json(404, {"ok": False, "error": "not_linked"})

@@ -16,6 +16,12 @@ const RADAR_FILL = 6;
 type Axis = Trait & { filler?: boolean };
 const isLean = (a: Trait) => Boolean(a.leaning) && !a.verified && a.count >= CONFIRM_CHARTS;
 const isEven = (a: Trait) => !a.verified && !a.leaning && a.count >= CONFIRM_CHARTS && Math.abs(a.offset) < LEAN;
+// far enough from your usual score to be worth reading, on enough charts to mean something, and not
+// rare enough under shuffled tags to be claimed. These sat in no list at all: not confirmed, not
+// leaning, and outside the band "level with the rest" covers.
+const isWatch = (a: Trait) => !a.verified && !isLean(a) && a.count >= CONFIRM_CHARTS && Math.abs(a.offset) >= LEAN;
+// how many to show a side, so the tab answers "what should I work on" with something either way
+const BASELINE = 3;
 
 /** Pick the axes the wheel is drawn on: confirmed and leaning traits about play, both halves so the shape has contrast.
  *  A wheel with fewer than six is rounded out with the groups the player plays evenly, which sit on the middle ring. */
@@ -158,6 +164,7 @@ function List({ items, tone, empty }: { items: Trait[]; tone: "down" | "up"; emp
           <span className="trait-label">
             {t.english ?? t.label}
             {isLean(t) ? <span className="trait-lean">leaning</span> : null}
+            {isWatch(t) ? <span className="trait-lean">worth watching</span> : null}
           </span>
           <span className="mono dim" title={`${t.count} charts${t.plays ? `, ${t.plays} plays` : ""}${t.p ? ` · ${chance(t.p)}` : ""}`}>
             {t.count}
@@ -263,16 +270,37 @@ export function Traits({ traits, axes, charts, families, practice, onOpen }: { t
   );
   const confirmed = traits.filter((t) => t.verified !== false);
   const leaning = all.filter(isLean);
+  const watch = all.filter(isWatch);
   const even = all.filter(isEven).sort((a, b) => b.count - a.count);
   const shown = [...confirmed, ...leaning];
-  const weak = shown.filter((t) => t.offset < 0).sort((a, b) => a.offset - b.offset).slice(0, 8);
-  const strong = shown.filter((t) => t.offset > 0).sort((a, b) => b.offset - a.offset).slice(0, 8);
+  // Both lists are filled from the same order - confirmed, then leaning, then worth watching - so
+  // the strongest evidence always leads and the rest is there to give the tab a shape. A confirmed
+  // trait is never dropped to make the two sides match: they are levelled up, never down.
+  const seen = new Set<string>();
+  const ranked = [...confirmed, ...leaning, ...watch].filter((t) => {
+    const key = `${t.dimension}:${t.label}`;
+    return seen.has(key) ? false : (seen.add(key), true);
+  });
+  const rank = (t: Trait) => (t.verified ? 0 : isLean(t) ? 1 : 2);
+  const side = (want: number) =>
+    ranked.filter((t) => (want < 0 ? t.offset < 0 : t.offset > 0))
+      .sort((a, b) => rank(a) - rank(b) || Math.abs(b.offset) - Math.abs(a.offset));
+  const below = side(-1);
+  const above = side(1);
+  const room = Math.max(BASELINE, below.filter((t) => t.verified).length, above.filter((t) => t.verified).length);
+  // picked by evidence so a confirmed trait always makes the cut, then shown by size, because a list
+  // headed by the gap in points reads as broken when the numbers do not run in order
+  const bySize = (a: Trait, b: Trait) => Math.abs(b.offset) - Math.abs(a.offset);
+  const weak = below.slice(0, room).sort(bySize);
+  const strong = above.slice(0, room).sort(bySize);
   const largest = [...all].filter((t) => t.count >= CONFIRM_CHARTS)
     .sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset)).slice(0, 4);
   const gate =
-    "Confirmed: rarer than 1 in 50 under shuffled tags and the same sign in both halves of your charts, three splits over. Leaning: points one way but has not passed that, so read it as a hint. Only confirmed traits steer your picks and /new focus.";
+    "Confirmed: rarer than 1 in 50 under shuffled tags and the same sign in both halves of your charts, three splits over. Leaning: rarer than 1 in 20, so read it as a hint. Worth watching: far enough from your usual score to be worth reading, on enough charts to mean something, but shuffled tags matched it often enough that it may be nothing. Only confirmed traits steer your picks and /new focus.";
 
-  if (!shown.length) {
+  // the empty state is for a player with nothing to show on either side, which now includes what is
+  // only worth watching: a list with rows in it is never called empty
+  if (!weak.length && !strong.length) {
     return (
       <section className="ledger">
         <div className="ledger-head">
@@ -315,7 +343,7 @@ export function Traits({ traits, axes, charts, families, practice, onOpen }: { t
         <div className="ledger-head">
           <Label info={`Your traits: what your charts share, a pattern, a note mix, a tempo band, an era, a designer, scored by how far your results sit from your own curve. Once enough plays are stored, each note type joins them, measured from your judgement pages rather than inferred from scores. Every tag is fitted together over your bests and every recorded play, with play count and difficulty held fixed. ${gate} Patterns and note mixes come from maiノーツ.`}>how you play</Label>
           <span className="mono hint">
-            {confirmed.length} confirmed · {leaning.length} leaning · {even.length} level with the rest · {charts} scored charts
+            {confirmed.length} confirmed · {leaning.length} leaning · {watch.length} worth watching · {even.length} level with the rest · {charts} scored charts
           </span>
         </div>
         <div className="two-up radar-split">
@@ -333,11 +361,11 @@ export function Traits({ traits, axes, charts, families, practice, onOpen }: { t
             <div className="ledger-head">
               <Label info="Traits where your scores sit below your own curve. The number is the gap in achievement points. The small figure counts the charts sharing the trait, or the plays behind it for a note type. Hover it for how rarely shuffled tags matched it.">where you lose points</Label>
             </div>
-            <List items={weak} tone="down" empty="Nothing sits below your own average, confirmed or leaning." />
+            <List items={weak} tone="down" empty="Nothing sits below your own average yet." />
             <div className="ledger-head">
               <Label info="Traits where your scores sit above your own curve.">where you shine</Label>
             </div>
-            <List items={strong} tone="up" empty="Nothing sits above your own average yet, confirmed or leaning." />
+            <List items={strong} tone="up" empty="Nothing sits above your own average yet." />
           </div>
         </div>
         {families?.length ? (

@@ -977,12 +977,12 @@ def _seam_addresses():
             problems.append(f"the site proxies {target} and the bot dispatches no such path")
 
     # writes are allow-listed on both sides, and a list that drifts is a form that stops working
-    allowed = re.search(r"\[((?:\"[a-z]+\",?\s*)+)\]\.includes\(path\)", web)
-    posts = set(re.findall(r'"/internal/me/([a-z]+)"', routes[routes.index("def handle_post"):]))
+    allowed = re.search(r"\[((?:\"[a-z/]+\",?\s*)+)\]\.includes\(path\)", web)
+    posts = set(re.findall(r'"/internal/me/([a-z/]+)"', routes[routes.index("def handle_post"):]))
     if not allowed:
         problems.append("the site no longer allow-lists which writes under /api/me it will forward")
     else:
-        site_posts = set(re.findall(r'"([a-z]+)"', allowed.group(1)))
+        site_posts = set(re.findall(r'"([a-z/]+)"', allowed.group(1)))
         for name in sorted(site_posts - posts):
             problems.append(f"the site forwards a write to /api/me/{name} that the bot does not accept")
         for name in sorted(posts - site_posts):
@@ -1118,6 +1118,21 @@ def _traits_are_skills():
         problems.append("the site no longer says what it counts as leaning")
     elif "CONFIRM_CHARTS" not in lean[0]:
         problems.append("the site shows a lean however few charts are behind it, where the bot does not")
+
+    # the site fills both sides out to a baseline so the tab answers "what should I work on" either
+    # way, and every row it adds still has to carry enough charts to mean anything
+    watch = [line for line in source.splitlines() if line.strip().startswith("const isWatch =")]
+    if not watch:
+        problems.append("the site no longer says what it is willing to show beyond what it can claim")
+    else:
+        if "CONFIRM_CHARTS" not in watch[0]:
+            problems.append("the site would fill its lists with traits on too few charts to mean anything")
+        if "verified" not in watch[0] or "isLean" not in watch[0]:
+            problems.append("the site would show a confirmed or leaning trait twice, once per tier")
+    if not re.search(r"const BASELINE = [1-9]", source):
+        problems.append("the site no longer fills both sides out, so one can be empty while the other is not")
+    if "t.verified).length" not in source:
+        problems.append("the two sides are levelled without keeping every confirmed trait, which can drop one")
 
     # and the lists it builds have to be built from the filtered set, not the raw axes
     defines = [line for line in source.splitlines() if line.strip().startswith("const all =")]
@@ -2409,6 +2424,59 @@ def _only_what_can_graduate():
     small = [dict(a, count=4) for a in pair]
     if family_axes(small):
         problems.append("a family with almost no charts behind it was drawn because it had two traits")
+    return problems
+
+
+@check("the one account can update either chart database by hand, and nobody else can")
+def _manual_updates():
+    import json as _json
+
+    from rasmai.web.dashboard import admin, routes
+
+    class Answer:
+        def __init__(self):
+            self.code, self.body = 0, {}
+
+        def _send_json(self, code, body):
+            self.code, self.body = code, body
+
+    problems = []
+    held_admin, held_route = admin.is_admin, routes.start_update
+    asked = []
+    routes.start_update = lambda source: asked.append(source) or {"ok": True, "running": True}
+    try:
+        routes.is_admin = lambda user_id: user_id == "1"
+        answer = Answer()
+        routes.handle_post(answer, "/internal/me/admin/update", {"id": "1"}, {"source": "simai"})
+        if answer.code != 202 or asked != ["simai"]:
+            problems.append(f"the one account could not start an update: {answer.code} {answer.body}, asked {asked}")
+
+        asked.clear()
+        answer = Answer()
+        routes.handle_post(answer, "/internal/me/admin/update", {"id": "2"}, {"source": "simai"})
+        if answer.code != 404 or asked:
+            problems.append(f"someone else started an update: {answer.code} {answer.body}, asked {asked}")
+        if answer.body.get("error") != "not_found":
+            problems.append("a refused update says it was refused, which tells the caller the page is there")
+    finally:
+        routes.start_update = held_route
+        routes.is_admin = held_admin
+
+    # only the two databases there are, and one at a time
+    if admin.start_update("nonsense").get("ok"):
+        problems.append("a database nobody has was updated")
+    for source in admin.SOURCES:
+        admin._updates[source] = {"running": True}
+        if admin.start_update(source).get("ok"):
+            problems.append(f"a second {source} update started while the first was still running")
+        admin._updates.pop(source, None)
+
+    # and the site is allowed to ask for it
+    proxy = (ROOT / "web" / "app" / "api" / "me" / "[...rest]" / "route.ts").read_text(encoding="utf-8")
+    if "admin/update" not in proxy:
+        problems.append("the site cannot reach the update route, so the buttons do nothing")
+    if not _json.dumps(admin.update_state()).startswith("{"):
+        problems.append("the developer page cannot be told how the last update went")
     return problems
 
 

@@ -30,16 +30,19 @@ export async function GET(request: Request, { params }: Params) {
   }
 }
 
-/** Refresh (start a score read), unlink, import, sharing and beta switches. */
+/** Refresh (start a score read), unlink, import, sharing, beta switches, and the one account's
+ *  chart-database updates. The bot refuses that last one to everyone else the same way it refuses
+ *  the developer page itself, so nothing here has to know who is allowed. */
 export async function POST(request: Request, { params }: Params) {
   if (!apiLimiter.allow(clientKey(request))) return json(429, { ok: false, error: "rate_limited" });
   if (!sameOrigin(request)) return json(403, { ok: false, error: "cross_origin" });
   const user = currentUser(request);
   if (!user) return json(401, { ok: false, error: "signed_out" });
   const path = tail((await params).rest);
-  if (!path || !["refresh", "unlink", "import", "sharing", "beta"].includes(path)) return json(404, { ok: false, error: "not_found" });
+  if (!path || !["refresh", "unlink", "import", "sharing", "beta", "admin/update"].includes(path))
+    return json(404, { ok: false, error: "not_found" });
   let body: unknown = {};
-  if (path === "sharing" || path === "beta") {
+  if (path === "sharing" || path === "beta" || path === "admin/update") {
     try {
       body = JSON.parse(await request.text());
     } catch {

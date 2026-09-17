@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { ApiError, getJSON, type Overview } from "./api";
+import { ApiError, getJSON, postJSON, type Overview } from "./api";
 import { Empty, Label, num, when } from "./bits";
 import { Frame } from "./Frame";
 
@@ -13,6 +13,7 @@ type AdminData = {
   failingReads: ({ userId: string; lastRead: string; error: string } & Person)[];
   sources: { source: string; checkedAt: string; bytes: number; etag: boolean }[];
   simai?: { read: number; refused: number; waiting: number; sheets?: number; sheetBytes?: number; checked_at?: string };
+  updates?: Record<string, { running?: boolean; ok?: boolean; said?: string; at?: string; seconds?: number }>;
   busiest: ({ userId: string; plays: number } & Person)[];
   activity: { day: string; plays: number; people: number }[];
   growth: { day: string; accounts: number }[];
@@ -178,6 +179,7 @@ export function AdminPanel() {
   const [error, setError] = useState("");
   const [open, setOpen] = useState<Detail | null>(null);
   const [opening, setOpening] = useState("");
+  const [asked, setAsked] = useState("");
 
   const openUser = (userId: string) => {
     setOpening(userId);
@@ -185,6 +187,18 @@ export function AdminPanel() {
       .then((d) => setOpen(d))
       .catch(() => undefined)
       .finally(() => setOpening(""));
+  };
+
+  // both chart databases refresh on their own, and neither had a way to say "now" short of a
+  // restart. The bot refuses this to everyone but the one account, so nothing here checks.
+  const update = (source: string) => {
+    setAsked(source);
+    postJSON("/api/me/admin/update", { source })
+      .catch(() => undefined)
+      .finally(() => {
+        setAsked("");
+        load();
+      });
   };
 
   const load = useCallback(() => {
@@ -476,6 +490,31 @@ export function AdminPanel() {
               </table>
             </div>
           )}
+          <div className="row-between">
+            <span className="mono hint">update the chart databases by hand</span>
+            <span className="seg">
+              {[["simai", "simai charts"], ["otoge", "otoge-db"]].map(([key, label]) => {
+                const state = data.updates?.[key];
+                const running = Boolean(state?.running) || asked === key;
+                return (
+                  <button key={key} type="button" onClick={() => update(key)} disabled={running}>
+                    {running ? `updating ${label}...` : `update ${label}`}
+                  </button>
+                );
+              })}
+            </span>
+          </div>
+          {["simai", "otoge"].map((key) => {
+            const state = data.updates?.[key];
+            if (!state || state.running || !state.said) return null;
+            return (
+              <p key={key} className={`hint ${state.ok ? "ok" : "bad"}`}>
+                {key}: {state.said}
+                {state.seconds ? ` · ${state.seconds}s` : ""}
+                {state.at ? ` · ${when(state.at)}` : ""}
+              </p>
+            );
+          })}
           {data.simai && data.simai.read + data.simai.waiting > 0 && (
             <p className="hint">
               Charts read note by note: <b>{data.simai.read.toLocaleString()}</b> trusted

@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 import logging
 import os
 import sqlite3
+import threading
 import time
 
 from rasmai.config import ADMIN_USER_ID, DATABASE_PATH, MAX_CONCURRENT_RENDERS, MAX_CONCURRENT_SCRAPES
@@ -212,6 +213,64 @@ def guilds_payload() -> List[Dict[str, Any]]:
     return [{**g, "owner": known.get(g["ownerId"], {}).get("name", "")} for g in out]
 
 
+# Both chart databases refresh on their own: otoge-db when its copy is a week old, the simai
+# repository when the commit it was read from has moved. Neither has a way to say "now", and the
+# only way to force one was to restart the bot. These run the same code the scheduled refresh runs,
+# on a thread, one at a time, so the page can start one and poll for how it went.
+SOURCES = ("simai", "otoge")
+_updates: Dict[str, Dict[str, Any]] = {}
+_update_lock = threading.Lock()
+
+
+def _run_update(source: str) -> None:
+    """Fetch one chart database again, whatever its age, and record how it went."""
+    started = time.time()
+    try:
+        if source == "simai":
+            from rasmai.scraping import simai, simai_bulk
+            held = simai_bulk.update(force=True)
+            simai.refresh()
+            said = f"{held:,} charts held, database filled from them"
+        else:
+            from rasmai.bot.builders.charts.index import refresh_shared_index
+            from rasmai.scraping.otoge import CachedOtogeDB
+            fetched = CachedOtogeDB().refresh_now()
+            if fetched:
+                refresh_shared_index()
+            said = "fetched and the chart index rebuilt" if fetched else "nothing came back, the copy held stands"
+        done = {"running": False, "ok": True, "said": said}
+    except Exception as error:                       # a failed update must not take the page with it
+        logger.exception("%s update failed", source)
+        done = {"running": False, "ok": False, "said": str(error)[:200]}
+    with _update_lock:
+        _updates[source] = {**done, "at": datetime.now().isoformat(timespec="seconds"),
+                            "seconds": round(time.time() - started, 1)}
+
+
+def start_update(source: str) -> Dict[str, Any]:
+    """Start a refresh of one chart database, or say no when that one is already running.
+
+    :param source: Which database: "simai" or "otoge".
+    :type source: str
+    :rtype: Dict[str, Any]
+    """
+    if source not in SOURCES:
+        return {"ok": False, "error": "unknown_source"}
+    with _update_lock:
+        if (_updates.get(source) or {}).get("running"):
+            return {"ok": False, "error": "already_running", **_updates[source]}
+        _updates[source] = {"running": True, "ok": True, "said": "running",
+                            "at": datetime.now().isoformat(timespec="seconds")}
+    threading.Thread(target=_run_update, args=(source,), name=f"rasmai-update-{source}", daemon=True).start()
+    return {"ok": True, "running": True, "source": source}
+
+
+def update_state() -> Dict[str, Any]:
+    """How each chart database was last refreshed by hand, and whether one is running now."""
+    with _update_lock:
+        return {source: dict(_updates.get(source) or {"running": False}) for source in SOURCES}
+
+
 def _simai_progress() -> Dict[str, Any]:
     """How far the chart crawl has got; empty when it has not started or cannot be read."""
     try:
@@ -310,6 +369,7 @@ def admin_payload() -> Dict[str, Any]:
         "sources": [{"source": r["source"], "checkedAt": r["checked_at"], "bytes": int(r["bytes"] or 0),
                      "etag": bool(r["tagged"])} for r in sources],
         "simai": _simai_progress(),
+        "updates": update_state(),
         "busiest": _named([{"userId": r["user_id"], "plays": int(r["plays"])} for r in busiest], known),
         "activity": activity,
         "growth": growth,
