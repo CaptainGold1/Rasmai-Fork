@@ -2051,6 +2051,33 @@ def _read_traits_practice():
     return problems
 
 
+@check("the site tells a browser to refuse http for a year, and nothing it serves needs http")
+def _hsts():
+    import re
+
+    config = (ROOT / "web" / "next.config.ts").read_text(encoding="utf-8")
+    problems = []
+    found = re.search(r'max-age=(\d+)([^"]*)', config)
+    if not found:
+        problems.append("the site does not tell a browser to stay on https at all")
+        return problems
+    months = int(found.group(1)) / (30 * 24 * 60 * 60)
+    if not 11.5 <= months <= 12.5:
+        problems.append(f"the browser is told to stay on https for {months:.1f} months, not twelve")
+    if "includeSubDomains" not in found.group(2):
+        problems.append("the subdomains are left out, so one of them could still be served over http")
+    if "Strict-Transport-Security" not in config:
+        problems.append("the max-age is written somewhere that is not the header that carries it")
+    # a page that asks for anything over http breaks outright once the browser refuses http
+    if "upgrade-insecure-requests" not in config:
+        problems.append("anything still written as http would be blocked rather than fetched over https")
+    # and none of it may be sent while the site itself is being served over http, or a browser
+    # pins a development machine to https for a year
+    if "secure ?" not in config:
+        problems.append("the header is sent even when the site is not on https, which pins a dev box for a year")
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:

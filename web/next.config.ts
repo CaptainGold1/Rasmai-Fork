@@ -16,9 +16,17 @@ const CSP = [
   "frame-ancestors 'none'",
   "base-uri 'none'",
   "form-action 'self' https://discord.com",
+  // a year of HSTS means the browser refuses http for this site outright. Anything still written
+  // as http is fetched over https instead of failing, so one stale link cannot break a page.
+  "upgrade-insecure-requests",
 ].join("; ");
 
 const secure = (process.env.MAIMAI_PUBLIC_URL ?? "https://rasmai.lol").startsWith("https://");
+
+// Twelve months, and every subdomain with it. The bare domain is the only host served directly;
+// www is redirected, and a redirect carries no headers of its own, so www is covered by this
+// header's includeSubDomains once a browser has seen the bare domain even once.
+const HSTS = "max-age=31536000; includeSubDomains";
 
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -27,7 +35,7 @@ const SECURITY_HEADERS = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   { key: "Content-Security-Policy", value: CSP },
-  ...(secure ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }] : []),
+  ...(secure ? [{ key: "Strict-Transport-Security", value: HSTS }] : []),
 ];
 
 // stamped into the client at build time: the service worker is registered under it, so every deploy is a new worker
