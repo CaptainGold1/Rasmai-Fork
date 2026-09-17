@@ -243,6 +243,7 @@ def remeasure() -> int:
 
 
 _memo: Tuple[float, Optional[Dict[str, Any]], Optional[Dict[str, float]]] = (0.0, None, None)
+_loose: Tuple[Optional[int], Dict[str, Any]] = (None, {})
 
 
 def _forget() -> None:
@@ -266,19 +267,44 @@ def cached() -> Tuple[Dict[str, Any], Dict[str, float]]:
     return rows, levels
 
 
+def _loosely(rows: Dict[str, Any]) -> Dict[str, Any]:
+    """The readings keyed by a title stripped of spacing and width, built once per set of rows."""
+    global _loose
+    stamp, index = _loose
+    if stamp == id(rows) and index:
+        return index
+    from rasmai.engine.analysis.charts import loose_title
+    index = {}
+    for key, row in rows.items():
+        title, _, rest = key.partition("|")
+        folded = loose_title(title)
+        if folded:
+            index.setdefault(f"{folded}|{rest}", row)
+    _loose = (id(rows), index)
+    return index
+
+
 def chart_traits(key: Tuple[str, str, str]) -> List[Tuple[str, str]]:
     """What the notes themselves say a chart asks for, or nothing when it has not been read.
+
+    The exact title first, then the same match the chart table already falls back on. maimai writes
+    a title with different spacing and width from the sites that catalogue it, and matching those
+    exactly reached 62% of what a player has played where the looser match reaches 95%.
 
     :param key: The chart, as ``(title, type, difficulty)``.
     :type key: Tuple[str, str, str]
     :rtype: List[Tuple[str, str]]
     """
+    from rasmai.engine.analysis.charts import loose_title
     from rasmai.engine.simai import traits
     rows, levels = cached()
     if not levels:
         return []
     title, chart_type, difficulty = key
     row = rows.get(f"{str(title).casefold()}|{chart_type}|{difficulty}")
+    if row is None:
+        folded = loose_title(str(title))
+        row = _loosely(rows).get(f"{folded}|{chart_type}|{difficulty}") if folded else None
     return traits(row, levels) if row else []
 
 

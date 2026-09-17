@@ -1673,31 +1673,31 @@ def _simai_model():
     from rasmai.scraping import simai
     from rasmai.storage.models import SongInfo
 
-    # a hundred charts, a third of them full of spins, and a player who drops a point on exactly those.
+    # a hundred charts, a third of them walking you round the ring, and a player who drops a point on exactly those.
     # Nothing else marks those charts out, so a trait can only find this by reading the notes.
     measured, index, songs = {}, ChartIndex(), []
     random.seed(5)
     spun = 0
     for n in range(120):
-        spins = 0.05 if n % 3 == 0 else 0.0
-        spun += bool(spins)
+        circles = 0.05 if n % 3 == 0 else 0.0
+        spun += bool(circles)
         key = f"chart {n}|dx|master"
-        measured[key] = {"spins": spins, "lv": 13.0}
+        measured[key] = {"circles": circles, "lv": 13.0}
         index.add(ChartRef(title=f"chart {n}", chart_type="dx", difficulty="master", constant=13.0,
                            level="13", notes=700, genre="", artist="", cover="", version=25, bpm=170.0))
-        accuracy = round(99.2 - (1.0 if spins else 0.0) + random.uniform(-0.15, 0.15), 4)
+        accuracy = round(99.2 - (1.0 if circles else 0.0) + random.uniform(-0.15, 0.15), 4)
         songs.append(SongInfo(name=f"chart {n}", chart_type="dx", difficulty_type="master", accuracy=accuracy,
                               is_new=False, level="13", difficulty=13.0, rating=calculate_rating(13.0, accuracy)))
 
     held = simai.cached
-    simai.cached = lambda: (measured, {"spins": 0.01})
+    simai.cached = lambda: (measured, {"circles": 0.01})
     problems = []
     try:
         off = build_play_profile(songs, [], index, 26, reading=False)
-        if any(axis["label"] == "charts with spins" for axis in off.trait_axes):
+        if any(axis["label"] == "charts that spin you round the ring" for axis in off.trait_axes):
             problems.append("a trait from the notes was measured for a player who never switched it on")
         on = build_play_profile(songs, [], index, 26, reading=True)
-        found = next((a for a in on.trait_axes if a["label"] == "charts with spins"), None)
+        found = next((a for a in on.trait_axes if a["label"] == "charts that spin you round the ring"), None)
         if found is None:
             problems.append(f"the weakness planted on {spun} charts was not measured at all")
         elif found["offset"] > -0.3:
@@ -1825,10 +1825,10 @@ def _read_tags_searchable():
         ref = ChartRef(title=f"chart {n}", chart_type="dx", difficulty="master", constant=13.0, level="13",
                        notes=700, genre="", artist="", cover="", version=25, bpm=170.0)
         index.add(ref)
-        measured["|".join(ref.key)] = {"spins": 0.1 if n % 3 == 0 else 0.0, "lv": 13.0}
+        measured["|".join(ref.key)] = {"circles": 0.1 if n % 3 == 0 else 0.0, "lv": 13.0}
 
     held = simai.cached
-    simai.cached = lambda: (measured, {"spins": 0.01})
+    simai.cached = lambda: (measured, {"circles": 0.01})
     patterns._catalogue_memo.clear()
     problems = []
     try:
@@ -1837,33 +1837,33 @@ def _read_tags_searchable():
 
         off = {tag["label"] for tag in chart_tags(spun, False)}
         on = {tag["label"] for tag in chart_tags(spun, True)}
-        if "charts with spins" in off:
+        if "charts that spin you round the ring" in off:
             problems.append("a trait read from the chart was shown to someone who never switched it on")
-        if "charts with spins" not in on:
-            problems.append("a chart full of spins was not tagged as one with the feature on")
-        if "charts with spins" in {tag["label"] for tag in chart_tags(quiet, True)}:
-            problems.append("a chart with no spins in it was tagged as having them")
+        if "charts that spin you round the ring" not in on:
+            problems.append("a chart that walks you round the ring was not tagged as one with the feature on")
+        if "charts that spin you round the ring" in {tag["label"] for tag in chart_tags(quiet, True)}:
+            problems.append("a chart that stays put was tagged as walking you round the ring")
         if not any(tag.get("read") for tag in chart_tags(spun, True)):
             problems.append("a trait read from the chart was not marked as read rather than written by hand")
 
         # the catalogue, and searching it
         patterns._catalogue_memo.clear()
-        if any(item["label"] == "charts with spins" for item in patterns.catalogue(index, False)):
+        if any(item["label"] == "charts that spin you round the ring" for item in patterns.catalogue(index, False)):
             problems.append("a trait read from the charts was listed for someone who never switched it on")
         patterns._catalogue_memo.clear()
-        if not any(item["label"] == "charts with spins" for item in patterns.catalogue(index, True)):
+        if not any(item["label"] == "charts that spin you round the ring" for item in patterns.catalogue(index, True)):
             problems.append("a trait read from the charts was missing from the list to search")
         patterns._catalogue_memo.clear()
-        if patterns.resolve("spins", index, False) is not None:
+        if patterns.resolve("spin you round", index, False) is not None:
             problems.append("searching found a trait the searcher had not switched on")
         patterns._catalogue_memo.clear()
-        found = patterns.resolve("spins", index, True)
-        if found != "charts with spins":
-            problems.append(f"searching for spins found {found!r}")
+        found = patterns.resolve("spin you round", index, True)
+        if found != "charts that spin you round the ring":
+            problems.append(f"searching for the walk round the ring found {found!r}")
         else:
             charts = patterns.charts_with(index, found, reading=True)
             if len(charts) != 10:
-                problems.append(f"ten of the thirty charts have spins, search returned {len(charts)}")
+                problems.append(f"ten of the thirty charts walk you round the ring, search returned {len(charts)}")
             if patterns.charts_with(index, found, reading=False):
                 problems.append("charts came back for a trait the searcher had not switched on")
     finally:
@@ -2024,16 +2024,16 @@ def _read_traits_practice():
         ref = ChartRef(title=f"chart {n}", chart_type="dx", difficulty="master", constant=13.0, level="13",
                        notes=700, genre="", artist="", cover="", version=25, bpm=170.0)
         index.add(ref)
-        measured["|".join(ref.key)] = {"spins": 0.1 if n % 2 == 0 else 0.0, "lv": 13.0}
+        measured["|".join(ref.key)] = {"circles": 0.1 if n % 2 == 0 else 0.0, "lv": 13.0}
         accuracy = 99.0 if n % 2 else 99.5
         songs.append(SongInfo(name=f"chart {n}", chart_type="dx", difficulty_type="master", accuracy=accuracy,
                               is_new=False, level="13", difficulty=13.0, rating=calculate_rating(13.0, accuracy)))
     held = simai.cached
-    simai.cached = lambda: (measured, {"spins": 0.01})
+    simai.cached = lambda: (measured, {"circles": 0.01})
     problems = []
     try:
         profile = build_play_profile(songs, [], index, 26, reading=True)
-        axis = next((a for a in profile.trait_axes if a["label"] == "charts with spins"), None)
+        axis = next((a for a in profile.trait_axes if a["label"] == "charts that spin you round the ring"), None)
         if axis is None:
             problems.append("the trait was not measured, so there was nothing to practise")
         else:
@@ -2137,7 +2137,8 @@ def _simai_bulk():
 
         # only the charts the manifest lists are measured, because nothing else can check them
         facts = {"test song|dx|master": {"n": 8, "l": 13.0, "c": "abc"}}
-        mai_notes.cached_facts = lambda: types.SimpleNamespace(exact=facts)
+        mai_notes.cached_facts = lambda: types.SimpleNamespace(
+            exact=facts, get=lambda key: facts.get("|".join(key)))
         known = {}
         read = simai_bulk.load(known)
         if read != 1 or set(known) != {"test song|dx|master"}:
@@ -2180,6 +2181,180 @@ def _simai_bulk():
         mai_notes.cached_facts = was_facts
         store.DATABASE_PATH = was_path
         store._database_ready = False
+    return problems
+
+
+@check("a technique is found in the notes themselves: trills, jacks, streams, walks round the ring, delayed slides and fans")
+def _techniques():
+    from rasmai.engine.simai.parse import parse
+    from rasmai.engine.simai.techniques import techniques
+
+    def of(chart):
+        return techniques(parse(chart).notes)
+
+    problems = []
+    # 1 2 1 2 1 2 1 2 at sixteenths: two places, swapped every note, which is a trill and not a jack
+    trill = of("(180){16}1,2,1,2,1,2,1,2,E")
+    if trill["trills"] <= 0:
+        problems.append("an alternation between two buttons was not read as a trill")
+    if trill["jacks"] > 0:
+        problems.append("a trill was counted as a jack as well")
+
+    # the same button over and over is a jack, and must not be read as a trill
+    jack = of("(180){16}3,3,3,3,3,3,E")
+    if jack["jacks"] <= 0:
+        problems.append("the same button struck six times over was not read as a jack")
+    if jack["trills"] > 0:
+        problems.append("a jack was counted as a trill as well")
+
+    # a long even run across the ring is a stream
+    run = of("(180){16}1,2,3,4,5,6,7,8,1,2,3,4,E")
+    if run["streams"] <= 0:
+        problems.append("a long even run across the ring was not read as a stream")
+
+    # pads walked in a row are a touch sweep; buttons are not
+    sweep = of("(180){8}A1,A2,A3,A4,E")
+    if sweep["touchSweeps"] <= 0:
+        problems.append("touch pads walked in sequence were not read as a sweep")
+    if of("(180){8}1,2,3,4,E")["touchSweeps"] > 0:
+        problems.append("ring buttons were counted as a touch sweep")
+
+    # slow, spread-out notes are none of these
+    quiet = of("(90){1}1,2,1,2,E")
+    if any(quiet.get(k, 0) for k in ("trills", "jacks", "streams", "touchSweeps")):
+        problems.append(f"notes a second apart were read as a technique: {quiet}")
+
+    # a slide picking up where the last ended is one stroke continued
+    chain = of("(120){4}1-3[4:1],3-5[4:1],5-7[4:1],E")
+    if chain["chainedSlides"] <= 0:
+        problems.append("slides carrying on from one another were not read as chained")
+    if of("(120){4}1-3[4:1],,,6-8[4:1],E")["chainedSlides"] > 0:
+        problems.append("two unrelated slides were read as chained")
+
+    # a run that never turns back is a stream going round the ring, not a trill
+    circle = of("(180){8}1,2,3,4,5,6,7,8,E")
+    if circle["circles"] <= 0:
+        problems.append("notes stepping round the ring were not read as a walk round it")
+    if circle["trills"] > 0:
+        problems.append("a walk round the ring was counted as a trill")
+    if of("(180){16}1,3,2,4,3,5,4,6,E")["circles"] > 0:
+        problems.append("a trill that wanders was counted as a walk round the ring")
+    if of("(180){8}1,4,7,2,5,8,E")["circles"] > 0:
+        problems.append("notes thrown a third of the way round each time were read as walking it")
+
+    # the two trills that are named apart from each other: on the spot, and across the machine
+    if of("(180){16}1,2,1,2,1,2,1,2,E")["stationaryTrills"] <= 0:
+        problems.append("a trill between two neighbours was not read as one on the spot")
+    across = of("(180){16}1,5,1,5,1,5,1,5,E")
+    if across["scatterTrills"] <= 0:
+        problems.append("a trill between opposite sides was not read as one across the screen")
+    if across["stationaryTrills"] > 0:
+        problems.append("a trill across the screen was counted as one on the spot as well")
+
+    # one hand pinned to a button while the other moves about
+    axis = of("(180){16}1,3,1,4,1,5,1,6,E")
+    if axis["axisTrills"] <= 0:
+        problems.append("a trill against a held button was not read as one")
+    if of("(180){16}1,2,1,2,1,2,1,2,E")["axisTrills"] > 0:
+        problems.append("a trill between two buttons was read as one against a held button")
+
+    # a star struck, notes played over the top of it, and only then the slide setting off
+    if of("(120){4}1-5[2##1.5],2,3,4,E")["delayedSlides"] <= 0:
+        problems.append("a slide held back while other notes were played was not read as delayed")
+    if of("(120){4}1-5[4:1],,,,E")["delayedSlides"] > 0:
+        problems.append("a slide with nothing played over it was read as delayed")
+
+    # the fan slide is written as one letter and is counted as itself, not as a spin
+    if of("(120){4}1w5[4:1],E")["wifiSlides"] <= 0:
+        problems.append("the fan slide was not read as one")
+    if of("(120){4}1-5[4:1],E")["wifiSlides"] > 0:
+        problems.append("a straight slide was read as a fan")
+
+    # a trill while a slide from earlier is still travelling is one hand on its own
+    over = of("(120){4}1-5[1:1],{16}3,4,3,4,3,4,3,4,E")
+    if over["trillsOverSlides"] <= 0:
+        problems.append("a trill played while a slide was still travelling was not read as one")
+    if of("(120){16}3,4,3,4,3,4,3,4,E")["trillsOverSlides"] > 0:
+        problems.append("a trill with both hands free was read as one played over a slide")
+
+    # two looping slides on screen at once is where the arms cross; one after the other is not
+    if of("(120){4}1p5[1:2],2q6[1:2],E")["crossedLoops"] <= 0:
+        problems.append("two looping slides overlapping were not read as crossed")
+    if of("(120){1}1p5[4:1],,,,2q6[4:1],E")["crossedLoops"] > 0:
+        problems.append("two loops one after the other were read as crossed")
+    if of("(120){4}1-5[1:2],2-6[1:2],E")["crossedLoops"] > 0:
+        problems.append("two straight slides were read as loops")
+
+    # and two slides travelling at once at very different speeds
+    if of("(120){4}1-5[1:4],2-6[8:1],E")["mixedSpeedSlides"] <= 0:
+        problems.append("two slides travelling at once at different speeds were not read as one")
+    if of("(120){4}1-5[1:4],2-6[1:4],E")["mixedSpeedSlides"] > 0:
+        problems.append("two slides travelling at the same speed were read as mismatched")
+
+    # a technique is a share of the chart, so it cannot exceed it
+    for key, value in trill.items():
+        if not 0.0 <= value <= 1.0:
+            problems.append(f"{key} came out at {value}, which is not a share of anything")
+    return problems
+
+
+@check("a trait only a tenth of charts have is still named, rather than falling off the bottom of a quartile")
+def _rare_demand():
+    from rasmai.engine.simai.features import CUT, DEMANDS, HARD, thresholds, traits
+
+    # a hundred charts, ten of which have the thing: the quartile of that is zero, and a measure
+    # judged against a level of zero is never named at all. That is what the fixed bar is for.
+    problems = []
+    rare = [(key, label, fixed) for key, _d, label, fixed in DEMANDS if fixed]
+    for key, label, fixed in rare:
+        rows = [{key: fixed if n < 10 else 0.0, "lv": 13.0} for n in range(100)]
+        named = [name for _, name in traits(rows[0], thresholds(rows))]
+        if label not in named:
+            problems.append(f"{key} has a bar of its own and still went unnamed on a chart carrying it: {named}")
+    if not any(key == "scatterTrills" for key, _, _f in rare):
+        problems.append("scatter trills are on a tenth of charts, so a quartile of them is zero: they need a bar of their own")
+
+    # and a measure most charts do have is left to the quartile, which must still refuse the bottom
+    common = [{"quickSlides": n / 100, "lv": 13.0} for n in range(100)]
+    levels = thresholds(common)
+    if "charts with fast slides" not in [name for _, name in traits(common[-1], levels)]:
+        problems.append("the chart highest of all on a measure was not named for it")
+    if "charts with fast slides" in [name for _, name in traits(common[0], levels)]:
+        problems.append("the chart lowest of all on a measure was named for it anyway")
+    cut = thresholds([{"peak": float(n), "lv": 13.0} for n in range(100)]).get("peak") or 0.0
+    if not 70 <= cut <= 80:
+        problems.append(f"the top quarter of a hundred evenly spread charts starts at {cut}, not near {CUT * 100:.0f}")
+    if HARD < 10:
+        problems.append("the quartile is being taken over charts easier than the model is meant for")
+    return problems
+
+
+@check("a chart read from the notes is found even when maimai spaces its title differently")
+def _simai_loose_title():
+    from rasmai.scraping import simai
+
+    # maimai writes a title with its own spacing and width; the sites that catalogue it do not.
+    # Matching those exactly reached 62% of what a player has played, the looser match 95%.
+    rows = {"o.n.e.　-in the name of love-|dx|master": {"trills": 0.9, "lv": 13.0}}
+    levels = {"trills": 0.1}
+    held = simai.cached
+    simai.cached = lambda: (rows, levels)
+    simai._loose = (None, {})
+    problems = []
+    try:
+        if not simai.chart_traits(("o.n.e.　-in the name of love-", "dx", "master")):
+            problems.append("a chart was not found under the very title it is stored as")
+        if not simai.chart_traits(("O.N.E. -in the name of love-", "dx", "master")):
+            problems.append("a chart was not found when the title was spaced the way maimai spaces it")
+        if simai.chart_traits(("something else entirely", "dx", "master")):
+            problems.append("a chart that is not held was matched to one that is")
+        if simai.chart_traits(("o.n.e.　-in the name of love-", "std", "master")):
+            problems.append("the loose match ignored the chart type, so a standard chart took a DX reading")
+        if simai.chart_traits(("o.n.e.　-in the name of love-", "dx", "expert")):
+            problems.append("the loose match ignored the difficulty, so one chart took another's reading")
+    finally:
+        simai.cached = held
+        simai._loose = (None, {})
     return problems
 
 

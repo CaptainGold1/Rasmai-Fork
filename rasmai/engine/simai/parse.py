@@ -33,6 +33,7 @@ class Note:
     brk: bool = False            # a break note, worth more and punished harder
     ex: bool = False
     each: int = 1                # how many notes are struck at this moment, this one included
+    wait: float = 0.0            # seconds a slide's star sits still before it sets off
 
 
 @dataclass
@@ -94,6 +95,34 @@ def _duration(spec: str, bpm: float) -> float:
         return (float(count) * 4.0 / float(divisor)) * (60.0 / bpm) if bpm else 0.0
     except (ValueError, ZeroDivisionError):
         return 0.0
+
+
+def _wait(spec: str, bpm: float) -> float:
+    """How long a slide's star sits still before it travels, in seconds.
+
+    A star normally waits one beat. ``[wait##travel]`` says so outright, and ``[bpm#x:y]`` gives the
+    slide a tempo of its own, so its beat is that tempo's beat. The wait is what the Umiyuri
+    arrangement is made of: the star is struck, other notes are played over the top of it, and only
+    then does it set off.
+
+    :param spec: The bracketed length, with or without its brackets.
+    :type spec: str
+    :param bpm: The tempo in force where the note sits.
+    :type bpm: float
+    :rtype: float
+    """
+    beat = 60.0 / bpm if bpm else 0.0
+    spec = spec.strip("[]")
+    try:
+        if "##" in spec:
+            head = spec.partition("##")[0]
+            return _duration(head, bpm) if ":" in head else float(head)
+        if not spec.startswith("#") and "#" in spec:
+            own = float(spec.partition("#")[0])
+            return 60.0 / own if own else beat
+    except (ValueError, ZeroDivisionError):
+        return beat
+    return beat
 
 
 def sections(text: str) -> List[str]:
@@ -250,6 +279,7 @@ def _slide(text: str, index: int, clock: float, bpm: float, position: str) -> Tu
             index += 1
         corners.append((shape, end))
     travel = 0.0
+    wait = 60.0 / bpm if bpm else 0.0
     brk = ex = False
     for _ in range(2):                # the break mark sits on either side of the length
         while index < len(text) and text[index] in "bx":
@@ -261,9 +291,10 @@ def _slide(text: str, index: int, clock: float, bpm: float, position: str) -> Tu
             if close < 0:
                 break
             travel = _duration(text[index:close + 1], bpm)
+            wait = _wait(text[index:close + 1], bpm)
             index = close + 1
     return Note(clock, "slide", position, travel, "".join(sh for sh, _ in corners),
-                corners[-1][1] if corners else "", brk, ex), index
+                corners[-1][1] if corners else "", brk, ex, wait=wait), index
 
 
 def note_split(chart: Chart) -> Dict[str, Any]:

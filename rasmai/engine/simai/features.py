@@ -1,6 +1,7 @@
 from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
 from rasmai.engine.simai.parse import Chart, Note
+from rasmai.engine.simai.techniques import techniques
 
 # how far apart two ring buttons are, going the short way round: 1 and 8 are neighbours
 RING = 8
@@ -75,7 +76,9 @@ def features(chart: Chart) -> Dict[str, float]:
     for note in touches:
         by_moment.setdefault(round(note.time, 3), []).append(note)
     multi = sum(len(group) for group in by_moment.values() if len(group) > 1)
-    spins = sum(1 for n in slides if any(loop in n.shape for loop in LOOPS) or "w" in n.shape)
+    # the fan is not a loop: it leaves one star and arrives as three, and it is counted on its own
+    # as wifiSlides, so it is no longer folded in here
+    spins = sum(1 for n in slides if any(loop in n.shape for loop in LOOPS))
     # a slide written with more than one corner that turns back on itself: out and back again
     turns = sum(1 for n in slides if len(n.shape) > 1 and _gap(n.position, n.end) <= 2)
     jumps = [_gap(a.position, b.position) for a, b in zip(notes, notes[1:])
@@ -95,6 +98,7 @@ def features(chart: Chart) -> Dict[str, float]:
         "busyHands": _busy(notes),
         # every chart opens by stating its tempo, so only the markers after the first are changes
         "tempoChanges": float(max(0, chart.tempo_changes - 1)),
+        **techniques(notes),
     }
 
 
@@ -105,20 +109,74 @@ def features(chart: Chart) -> Dict[str, float]:
 # on: three charts in four never change tempo, so the top quarter of them is still zero and a
 # quartile would name every chart in the game or none of it.
 #
-# Every measure named here rises with a chart's level. "longHolds" is measured and deliberately not
-# named: against 651 charts it runs the other way, at -0.43 with level, because a hold over a second
-# long is a mark of a sparse chart rather than a hard one. What makes a hold hard is what arrives
-# while it is still down, and that is busyHands, which runs at +0.55.
+# Every measure read from the notes themselves is put through two gates before it is named here.
+# It has to rise with a chart's level, or it is measuring easiness; and where maiノーツ's editors
+# tag charts for the thing it claims to find, it has to run higher on those charts, which is the
+# nearest thing to an answer key there is.
+#
+# Both gates were run again over 1,350 charts read out of the cached repository, across every level
+# rather than only the hard end, because a pattern is introduced somewhere and gets denser from
+# there: that is what "rises with level" is meant to catch. Level correlation, then the tag:
+#
+#   streams          +0.61  乱打 4.1x          circles          +0.60  速い回転 2.9x
+#   delayedSlides    +0.58  ウミユリ配置 5.0x   trills           +0.55  トリル 5.1x
+#   chainedSlides    +0.54  (no tag with a big enough sample)
+#   gallops          +0.51  ハネリズム 7.3x     wifiSlides       +0.48  (no tag; the fan slide is
+#   touchSweeps      +0.43  (see below)                                one letter and unmistakable)
+#   trillsOverSlides +0.41  混フレ 3.1x        stationaryTrills +0.40  トリル 5.3x
+#   touchClusters    +0.31  タッチ複合 3.2x     axisTrills       +0.27  軸押しトリル 20.0x
+#   crossedLoops     +0.26  (魔法陣 is on five charts here, too few to judge on)
+#   scatterTrills    +0.18  トリル 6.2x        mixedSpeedSlides +0.17  スライド難 10.5x
+#   jacks            +0.03  縦連 1.9x
+#
+# jacks is the weak one: it barely rises with level, and it is kept because the tag it is checked
+# against is unambiguous and it ran 3.3x higher on those charts among level 12 and above.
+#
+# Three of these - gallops, chainedSlides and touchClusters - were measured and left unnamed when
+# the gate was run over 272 charts at level 12 and above alone, where they are flat. Over the whole
+# game they rise clearly. Both readings are true: they tell a level 6 chart from a level 13 one, and
+# they do not tell two level 13 charts apart.
+#
+# "longHolds" stays measured and unnamed: a hold over a second long marks a sparse chart, not a hard
+# one, and what makes a hold hard is busyHands.
+#
+# Rotation had to be rewritten. "spins" reads the slide shapes, and on 272 charts at level 12 and
+# above it falls with level (-0.27) and runs lower on the charts tagged 速い回転 than off them
+# (0.62x), so it was naming something that is not rotation. "circles" reads the notes instead, and
+# passes both gates.
+#
+# "spins" (-0.27), "each" (-0.24) and "turnarounds" (-0.10) were named before the gates existed and
+# are measured and unnamed now: all three fall with level over the hard charts, so a chart scoring
+# high on them was being called demanding for being easy. They are still stored, so naming one again
+# costs a line here rather than another crawl.
 DEMANDS: Tuple[Tuple[str, str, str, float], ...] = (
     ("quickSlides", "slide", "charts with fast slides", 0.0),
-    ("spins", "slide", "charts with spins", 0.0),
-    ("turnarounds", "slide", "charts with slides that double back", 0.0),
     ("multiTouch", "touch", "charts with multi-touch", 0.0),
     ("busyHands", "pattern", "charts that keep both hands working", 0.0),
-    ("each", "pattern", "charts with a lot struck together", 0.0),
     ("peak", "density", "charts with a hard burst", 0.0),
     ("reach", "pattern", "charts that throw you across the screen", 0.0),
     ("tempoChanges", "tempo", "charts that change tempo", 1.0),
+    ("streams", "pattern", "charts with long streams", 0.0),
+    ("trills", "pattern", "charts with trills", 0.0),
+    ("jacks", "pattern", "charts with jacks", 0.0),
+    ("touchSweeps", "touch", "charts with touch sweeps", 0.0),
+    ("circles", "pattern", "charts that spin you round the ring", 0.0),
+    ("delayedSlides", "slide", "charts with delayed slides", 0.0),
+    ("stationaryTrills", "pattern", "charts with trills on the spot", 0.0),
+    # a tenth of charts have one at all, so three quarters of the game scores zero and a quartile
+    # would be zero with it. This bar is one full run in a chart of about a thousand notes, which is
+    # the point at which the chart is asking for the thing rather than happening to contain it.
+    ("scatterTrills", "pattern", "charts with trills across the screen", 0.004),
+    ("axisTrills", "pattern", "charts with trills against a held button", 0.0),
+    ("wifiSlides", "slide", "charts with fan slides", 0.0),
+    ("gallops", "pattern", "charts with a bouncing rhythm", 0.0),
+    ("chainedSlides", "slide", "charts with chained slides", 0.0),
+    ("touchClusters", "touch", "charts with touch clusters", 0.0),
+    ("trillsOverSlides", "pattern", "charts with a trill over a slide", 0.0),
+    ("crossedLoops", "slide", "charts with overlapping loop slides", 0.0),
+    # a fifth of hard charts have a mismatched pair at all, so the quartile of it is zero and the
+    # trait could never be named. One pair in a chart of about a thousand notes is the bar.
+    ("mixedSpeedSlides", "slide", "charts with slides at different speeds", 0.001),
 )
 
 # a chart has to be in the top quarter of the game on a measure before that measure is named,
@@ -135,7 +193,7 @@ BOOKKEEPING = ("lv", "off")
 # bumped whenever a measure changes meaning, so stored readings taken by older code are dropped
 # rather than compared against levels they were never measured for. The charts themselves are kept,
 # so a bump costs a re-read of what is already held and not another crawl.
-VERSION = 2
+VERSION = 5
 
 
 def thresholds(rows: Iterable[Dict[str, float]]) -> Dict[str, float]:

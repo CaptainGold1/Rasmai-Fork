@@ -230,12 +230,15 @@ def load(known: Dict[str, object]) -> int:
     from rasmai.storage.db import sheet_put
 
     update()
-    facts = mai_notes.cached_facts().exact
+    facts = mai_notes.cached_facts()
     read = 0
     for key, body in cached().items():
         if key in known:
             continue
-        row = facts.get(key)
+        title, kind, difficulty = key.split("|", 2)
+        # the same match the chart table uses: the converter writes a title the way the game does,
+        # which is not always the way the catalogue does
+        row = facts.get((title, kind, difficulty))
         if row is None:
             continue                     # a chart the manifest does not list: nothing to check it against
         measured = simai.read_chart(body, row)

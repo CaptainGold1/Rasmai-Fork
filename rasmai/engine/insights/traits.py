@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from rasmai.engine.analysis import ChartIndex, ChartRef, PlayProfile
-from rasmai.engine.insights.tags import NOT_A_SKILL, _is_technique, chart_traits
+from rasmai.engine.insights.tags import NOT_A_SKILL, _is_technique, _read_traits, chart_traits
 
 
 TRAIT_MIN_CHARTS = 8         # a group needs this many distinct charts before it is measured at all
@@ -65,7 +65,7 @@ class _TraitDesign:
     A fit is then a matrix solve, and a permutation of the tags is a permutation of the chart
     rows, so the null distribution costs a few dozen solves rather than a few dozen rebuilds."""
 
-    CONTROLS = 5      # intercept, is a play, log plays, constant, carries any pattern tag
+    CONTROLS = 5      # intercept, is a play, log plays, constant, carries a pattern tag an editor wrote
 
     def __init__(self, observations: Sequence[Dict[str, Any]], tags: Sequence[Tuple[str, str]], profile: PlayProfile,
                  reading: bool = False):
@@ -79,12 +79,19 @@ class _TraitDesign:
         self.n_keys = len(keys)
         self.tagvec = np.zeros((len(keys), len(self.tags)))
         self.has_pattern = np.zeros(len(keys))
+        seen = set()
         for o in observations:
             row = key_row[o["key"]]
-            if self.tagvec[row].any() or self.has_pattern[row]:
+            if row in seen:
                 continue
+            seen.add(row)
+            # the control stands for a human having looked at this chart and thought it worth
+            # tagging, which is a reason it might play hard on its own. A measure taken off the
+            # notation is not that, and counting it here let an unpenalised control swallow the
+            # whole of a trait the notes had found.
+            written = {label for _dimension, label in _read_traits(o["chart"])} if reading else set()
             for tag in chart_traits(o["chart"], reading):
-                if tag[0] == "pattern":
+                if tag[0] == "pattern" and tag[1] not in written:
                     self.has_pattern[row] = 1.0
                 col = index.get(tag)
                 if col is not None:
