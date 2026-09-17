@@ -241,11 +241,17 @@ def notable(axes: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
 def leaning(axes: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Traits that lean one way on the player's data without passing the confirmation gate, weakest side first.
 
+    A lean on fewer charts than a confirmation needs is left out. Eight charts is enough to measure a
+    trait, twelve to confirm one, and showing the ones in between told a player about a weakness that
+    could never graduate however much they played: one of them sat at -0.84 on nine charts and two
+    plays. They are still measured, and they appear as soon as a twelfth chart is played.
+
     :param axes: Every trait group measured.
     :type axes: Sequence[Dict[str, Any]]
     :rtype: List[Dict[str, Any]]
     """
     return sorted([axis for axis in axes if axis.get("leaning") and not axis.get("verified")
+                   and int(axis.get("count") or 0) >= TRAIT_CONFIRM_CHARTS
                    and axis["dimension"] not in NOT_A_SKILL], key=lambda axis: float(axis["offset"]))
 
 

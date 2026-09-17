@@ -2358,6 +2358,45 @@ def _simai_loose_title():
     return problems
 
 
+@check("nothing is shown that cannot be confirmed: not a lean on too few charts, not a family of one")
+def _only_what_can_graduate():
+    from rasmai.engine.insights.families import FAMILY_MIN_CHARTS, FAMILY_MIN_TRAITS, family_axes
+    from rasmai.engine.insights.traits import TRAIT_CONFIRM_CHARTS, leaning
+
+    def axis(label, offset, count, **rest):
+        return {"dimension": "pattern", "label": label, "offset": offset, "count": count,
+                "plays": 2, "verified": False, "leaning": True, **rest}
+
+    problems = []
+    # eight charts is enough to measure a trait, twelve to confirm one. A lean in between can never
+    # graduate however much the player plays, so it is not told to them as a weakness.
+    thin = axis("charts with fast slides", -0.84, TRAIT_CONFIRM_CHARTS - 1)
+    thick = axis("charts with trills", -0.84, TRAIT_CONFIRM_CHARTS)
+    shown = [a["label"] for a in leaning([thin, thick])]
+    if "charts with fast slides" in shown:
+        problems.append(f"a lean on {thin['count']} charts was shown, and it can never be confirmed")
+    if "charts with trills" not in shown:
+        problems.append("a lean on enough charts to be confirmed one day was not shown")
+
+    # and a family averaging one trait is that trait wearing a family's name, drawn the same size as
+    # a family averaging thirteen
+    lone = [{"dimension": "pattern", "label": "charts that spin you round the ring", "offset": 0.49,
+             "count": FAMILY_MIN_CHARTS * 2, "plays": 9, "verified": False, "leaning": False}]
+    if family_axes(lone):
+        problems.append("a family was drawn from a single trait")
+    pair = lone + [{"dimension": "rotation", "label": "速い回転 (fast rotations)", "offset": -0.2,
+                    "count": FAMILY_MIN_CHARTS, "plays": 4, "verified": False, "leaning": False}]
+    drawn = family_axes(pair)
+    if not any(f["key"] == "rotation" for f in drawn):
+        problems.append(f"a family of {FAMILY_MIN_TRAITS} traits over {FAMILY_MIN_CHARTS * 3} charts was not drawn")
+
+    # a family still needs the charts as well as the traits
+    small = [dict(a, count=4) for a in pair]
+    if family_axes(small):
+        problems.append("a family with almost no charts behind it was drawn because it had two traits")
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:

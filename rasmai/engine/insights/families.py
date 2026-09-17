@@ -82,6 +82,11 @@ ORDER = tuple(FAMILIES)
 # to solve. On the six players measured it drops one family, of two tags over twenty-three charts.
 FAMILY_MIN_CHARTS = 30
 
+# and this many traits. A family averaging one trait is that trait wearing a family's name, drawn on
+# the wheel the same size as a family averaging thirteen: on one player it put rotation furthest out
+# of all six, off a single trait the model would not even call a lean.
+FAMILY_MIN_TRAITS = 2
+
 
 def _member_of(trait: Dict[str, Any]) -> str:
     """The family a trait belongs to, or "" when nothing claims it."""
@@ -116,7 +121,7 @@ def family_axes(axes: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
     for key in ORDER:
         traits = held[key]
         charts = sum(int(t.get("count") or 0) for t in traits)
-        if not traits or charts < FAMILY_MIN_CHARTS:
+        if len(traits) < FAMILY_MIN_TRAITS or charts < FAMILY_MIN_CHARTS:
             continue
         offset = sum(float(t["offset"]) * int(t.get("count") or 0) for t in traits) / charts
         inside = sorted(traits, key=lambda t: float(t["offset"]))
