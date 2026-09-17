@@ -62,10 +62,10 @@ PATTERN_ENGLISH = {
 # Only the top side is named. A chart that is light on a note type asks nothing of the player for
 # it, so "slide-light" was never a skill of its own, only the other half of "slide-heavy" said twice.
 SHARE_BANDS: Tuple[Tuple[str, str, float, str], ...] = (
-    ("b", "break", 0.064, "break-heavy charts"),
-    ("s", "slide", 0.145, "slide-heavy charts"),
-    ("u", "touch", 0.070, "touch-heavy charts"),
-    ("h", "hold",  0.094, "hold-heavy charts"),
+    ("b", "break", 0.064, "break-heavy"),
+    ("s", "slide", 0.145, "slide-heavy"),
+    ("u", "touch", 0.070, "touch-heavy"),
+    ("h", "hold",  0.094, "hold-heavy"),
 )
 
 

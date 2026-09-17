@@ -89,13 +89,21 @@ def _englished(profile: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
 
     :param profile: The profile as the analysis summarised it.
     :type profile: Optional[Dict[str, Any]]
-    :returns: The same profile with an ``english`` field on each trait.
+    Each trait also says whether it was read from the chart's own notes or written by an editor. The
+    two can now carry the same wording - the editors' トリル is shown as "trills" and so is the
+    measure taken off the notation - and a reader looking at two rows saying "trills" should be able
+    to tell which is which.
+
+    :returns: The same profile with ``english`` and ``read`` fields on each trait.
     :rtype: Optional[Dict[str, Any]]
     """
     if not profile:
         return profile
+    from rasmai.engine.simai.features import DEMANDS
+    measured = {label for _key, _dimension, label, _fixed in DEMANDS}
     out = dict(profile)
     for field in ("traits", "traitAxes"):
         rows = out.get(field) or []
-        out[field] = [{**row, "english": mainotes_english(str(row.get("label") or ""))} for row in rows]
+        out[field] = [{**row, "english": mainotes_english(str(row.get("label") or "")),
+                       "read": str(row.get("label") or "") in measured} for row in rows]
     return out

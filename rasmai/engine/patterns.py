@@ -12,7 +12,7 @@ def _facts() -> Dict[str, Dict[str, Any]]:
 
 
 def _fold(text: str) -> str:
-    """A search string with case, spaces, hyphens and brackets taken out, so "slide heavy" finds "slide-heavy charts"."""
+    """A search string with case, spaces, hyphens and brackets taken out, so "slide heavy" finds "slide-heavy"."""
     return "".join(ch for ch in str(text).casefold() if ch.isalnum())
 
 

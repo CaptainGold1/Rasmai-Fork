@@ -7,6 +7,7 @@ import { Empty, Info, Jacket, Label, TitleLink, type OpenChart } from "./bits";
 // is only worth naming if it is a skill you can work on. Kept in step with NOT_A_SKILL in tags.py.
 const NOT_A_SKILL = new Set(["type", "era", "genre", "designer"]);
 const LEAN = 0.3;
+const LEAN_P = 0.05;
 const CONFIRM_CHARTS = 12;
 const TIER = { basic: "BAS", advanced: "ADV", expert: "EXP", master: "MAS", remaster: "Re:M" } as Record<string, string>;
 
@@ -145,10 +146,13 @@ export function Radar({ axes }: { axes: Axis[] }) {
   );
 }
 
+function odds(p?: number): number {
+  return p ? Math.max(1, Math.round(1 / Math.max(p, 0.001))) : 0;
+}
+
 function chance(p?: number): string {
-  if (!p) return "";
-  const n = Math.max(1, Math.round(1 / Math.max(p, 0.001)));
-  return `1 in ${n} shuffles matched it`;
+  const n = odds(p);
+  return n ? `1 in ${n} shuffles matched it` : "";
 }
 
 function List({ items, tone, empty }: { items: Trait[]; tone: "down" | "up"; empty: string }) {
@@ -163,10 +167,12 @@ function List({ items, tone, empty }: { items: Trait[]; tone: "down" | "up"; emp
           </span>
           <span className="trait-label">
             {t.english ?? t.label}
+            {t.read ? <span className="trait-read" title="measured from the chart's own notes, not written by an editor">notes</span> : null}
             {isLean(t) ? <span className="trait-lean">leaning</span> : null}
             {isWatch(t) ? <span className="trait-lean">worth watching</span> : null}
           </span>
           <span className="mono dim" title={`${t.count} charts${t.plays ? `, ${t.plays} plays` : ""}${t.p ? ` · ${chance(t.p)}` : ""}`}>
+            {odds(t.p) ? <small className="trait-odds">1 in {odds(t.p)} · </small> : null}
             {t.count}
             {t.plays ? <small> · {t.plays} plays</small> : null}
           </span>
@@ -291,6 +297,13 @@ export function Traits({ traits, axes, charts, families, practice, onOpen }: { t
   // picked by evidence so a confirmed trait always makes the cut, then shown by size, because a list
   // headed by the gap in points reads as broken when the numbers do not run in order
   const bySize = (a: Trait, b: Trait) => Math.abs(b.offset) - Math.abs(a.offset);
+  // A lean is a trait shuffled tags matched less than one time in twenty. Over the couple of dozen
+  // groups a player has enough charts for, that alone produces about one, and the reader deserves
+  // to know how much of the list to discount. It is an upper estimate: a lean also has to sit a way
+  // out from the player's own middle, which chance clears less often than the odds alone suggest.
+  const byChance = Math.round(
+    (confirmed.length + leaning.length + watch.length + even.length) * LEAN_P,
+  );
   const weak = below.slice(0, room).sort(bySize);
   const strong = above.slice(0, room).sort(bySize);
   const largest = [...all].filter((t) => t.count >= CONFIRM_CHARTS)
@@ -343,7 +356,9 @@ export function Traits({ traits, axes, charts, families, practice, onOpen }: { t
         <div className="ledger-head">
           <Label info={`Your traits: what your charts share, a pattern, a note mix, a tempo band, an era, a designer, scored by how far your results sit from your own curve. Once enough plays are stored, each note type joins them, measured from your judgement pages rather than inferred from scores. Every tag is fitted together over your bests and every recorded play, with play count and difficulty held fixed. ${gate} Patterns and note mixes come from maiノーツ.`}>how you play</Label>
           <span className="mono hint">
-            {confirmed.length} confirmed · {leaning.length} leaning · {watch.length} worth watching · {even.length} level with the rest · {charts} scored charts
+            {confirmed.length} confirmed · {leaning.length} leaning
+            {leaning.length && byChance ? <> (about {byChance} by chance)</> : null} · {watch.length} worth watching ·{" "}
+            {even.length} level with the rest · {charts} scored charts
           </span>
         </div>
         <div className="two-up radar-split">

@@ -1078,7 +1078,7 @@ def _traits_are_skills():
         return row
 
     skills = [axis("pattern", "fast rotations"), axis("judgement", "tap notes"), axis("tempo", "very fast songs"),
-              axis("density", "dense charts"), axis("slide", "slide-heavy charts")]
+              axis("density", "dense charts"), axis("slide", "slide-heavy")]
     not_skills = [axis("designer", "charts by someone"), axis("genre", "POPS"), axis("era", "BUDDiES and newer"),
                   axis("type", "DX charts")]
     problems = []
@@ -1107,7 +1107,9 @@ def _traits_are_skills():
     # the same goes for the numbers the rule is made of. The site kept showing a lean on nine charts
     # after the bot had stopped, because the bar was raised in one copy of the rule and not the other
     from rasmai.engine.insights.traits import TRAIT_CONFIRM_CHARTS, TRAIT_LEAN_OFFSET
-    for name, ours in (("CONFIRM_CHARTS", TRAIT_CONFIRM_CHARTS), ("LEAN", TRAIT_LEAN_OFFSET)):
+    from rasmai.engine.insights.traits import TRAIT_LEAN_P
+    for name, ours in (("CONFIRM_CHARTS", TRAIT_CONFIRM_CHARTS), ("LEAN", TRAIT_LEAN_OFFSET),
+                       ("LEAN_P", TRAIT_LEAN_P)):
         found = re.search(rf"const {name} = ([0-9.]+);", source)
         if not found:
             problems.append(f"the site no longer keeps a {name} of its own, so the rule cannot be compared")
@@ -1129,6 +1131,9 @@ def _traits_are_skills():
             problems.append("the site would fill its lists with traits on too few charts to mean anything")
         if "verified" not in watch[0] or "isLean" not in watch[0]:
             problems.append("the site would show a confirmed or leaning trait twice, once per tier")
+    # and the page says how much of its own leaning list chance alone would produce
+    if "byChance" not in source:
+        problems.append("the site no longer says how many of its leans are what chance produces")
     if not re.search(r"const BASELINE = [1-9]", source):
         problems.append("the site no longer fills both sides out, so one can be empty while the other is not")
     if "t.verified).length" not in source:
@@ -1492,7 +1497,7 @@ def _bands():
     if note_traits({"n": 1000, "t": 940, "h": 20, "s": 20, "u": 10, "b": 10}):
         problems.append(f"a chart light in every note type was still given traits: {note_traits({'n': 1000, 't': 940, 'h': 20, 's': 20, 'u': 10, 'b': 10})}")
     heavy = dict(note_traits({"n": 1000, "t": 700, "h": 40, "s": 200, "u": 30, "b": 30}))
-    if heavy.get("slide") != "slide-heavy charts" or len(heavy) != 1:
+    if heavy.get("slide") != "slide-heavy" or len(heavy) != 1:
         problems.append(f"a slide-heavy chart was read as {heavy}")
     # and a chart in the middle of the game's tempo and note count is in no band at all: a band holding
     # the bulk of the game sits on the player's own average and can never say anything
@@ -1724,10 +1729,10 @@ def _simai_model():
     problems = []
     try:
         off = build_play_profile(songs, [], index, 26, reading=False)
-        if any(axis["label"] == "charts that spin you round the ring" for axis in off.trait_axes):
+        if any(axis["label"] == "spinning round the ring" for axis in off.trait_axes):
             problems.append("a trait from the notes was measured for a player who never switched it on")
         on = build_play_profile(songs, [], index, 26, reading=True)
-        found = next((a for a in on.trait_axes if a["label"] == "charts that spin you round the ring"), None)
+        found = next((a for a in on.trait_axes if a["label"] == "spinning round the ring"), None)
         if found is None:
             problems.append(f"the weakness planted on {spun} charts was not measured at all")
         elif found["offset"] > -0.3:
@@ -1867,28 +1872,28 @@ def _read_tags_searchable():
 
         off = {tag["label"] for tag in chart_tags(spun, False)}
         on = {tag["label"] for tag in chart_tags(spun, True)}
-        if "charts that spin you round the ring" in off:
+        if "spinning round the ring" in off:
             problems.append("a trait read from the chart was shown to someone who never switched it on")
-        if "charts that spin you round the ring" not in on:
+        if "spinning round the ring" not in on:
             problems.append("a chart that walks you round the ring was not tagged as one with the feature on")
-        if "charts that spin you round the ring" in {tag["label"] for tag in chart_tags(quiet, True)}:
+        if "spinning round the ring" in {tag["label"] for tag in chart_tags(quiet, True)}:
             problems.append("a chart that stays put was tagged as walking you round the ring")
         if not any(tag.get("read") for tag in chart_tags(spun, True)):
             problems.append("a trait read from the chart was not marked as read rather than written by hand")
 
         # the catalogue, and searching it
         patterns._catalogue_memo.clear()
-        if any(item["label"] == "charts that spin you round the ring" for item in patterns.catalogue(index, False)):
+        if any(item["label"] == "spinning round the ring" for item in patterns.catalogue(index, False)):
             problems.append("a trait read from the charts was listed for someone who never switched it on")
         patterns._catalogue_memo.clear()
-        if not any(item["label"] == "charts that spin you round the ring" for item in patterns.catalogue(index, True)):
+        if not any(item["label"] == "spinning round the ring" for item in patterns.catalogue(index, True)):
             problems.append("a trait read from the charts was missing from the list to search")
         patterns._catalogue_memo.clear()
-        if patterns.resolve("spin you round", index, False) is not None:
+        if patterns.resolve("spinning round", index, False) is not None:
             problems.append("searching found a trait the searcher had not switched on")
         patterns._catalogue_memo.clear()
-        found = patterns.resolve("spin you round", index, True)
-        if found != "charts that spin you round the ring":
+        found = patterns.resolve("spinning round", index, True)
+        if found != "spinning round the ring":
             problems.append(f"searching for the walk round the ring found {found!r}")
         else:
             charts = patterns.charts_with(index, found, reading=True)
@@ -1988,9 +1993,9 @@ def _families():
     vocabulary += [{"dimension": dimension, "label": label} for _k, dimension, label, _fixed in DEMANDS]
     vocabulary += [{"dimension": "judgement", "label": f"{kind} notes"} for kind in KINDS]
     vocabulary += [{"dimension": "tempo", "label": "slow songs (under 130 BPM)"},
-                   {"dimension": "tempo", "label": "very fast songs (over 210 BPM)"},
+                   {"dimension": "tempo", "label": "very fast (over 210 BPM)"},
                    {"dimension": "density", "label": "light charts (under 620 notes)"},
-                   {"dimension": "density", "label": "dense charts (890+ notes)"}]
+                   {"dimension": "density", "label": "a lot of notes (890+)"}]
     problems = []
     orphans = unclaimed(vocabulary)
     if orphans:
@@ -1999,7 +2004,7 @@ def _families():
     # a family follows the charts behind it, so a tag measured on a handful cannot swing it
     axes = [
         {"dimension": "pattern", "label": "乱打 (streams)", "offset": -1.0, "count": 10, "plays": 2, "verified": False},
-        {"dimension": "density", "label": "dense charts (890+ notes)", "offset": 0.0, "count": 90, "plays": 30,
+        {"dimension": "density", "label": "a lot of notes (890+)", "offset": 0.0, "count": 90, "plays": 30,
          "verified": True},
     ]
     families = {f["key"]: f for f in family_axes(axes)}
@@ -2063,7 +2068,7 @@ def _read_traits_practice():
     problems = []
     try:
         profile = build_play_profile(songs, [], index, 26, reading=True)
-        axis = next((a for a in profile.trait_axes if a["label"] == "charts that spin you round the ring"), None)
+        axis = next((a for a in profile.trait_axes if a["label"] == "spinning round the ring"), None)
         if axis is None:
             problems.append("the trait was not measured, so there was nothing to practise")
         else:
@@ -2347,9 +2352,9 @@ def _rare_demand():
     # and a measure most charts do have is left to the quartile, which must still refuse the bottom
     common = [{"quickSlides": n / 100, "lv": 13.0} for n in range(100)]
     levels = thresholds(common)
-    if "charts with fast slides" not in [name for _, name in traits(common[-1], levels)]:
+    if "fast slides" not in [name for _, name in traits(common[-1], levels)]:
         problems.append("the chart highest of all on a measure was not named for it")
-    if "charts with fast slides" in [name for _, name in traits(common[0], levels)]:
+    if "fast slides" in [name for _, name in traits(common[0], levels)]:
         problems.append("the chart lowest of all on a measure was named for it anyway")
     cut = thresholds([{"peak": float(n), "lv": 13.0} for n in range(100)]).get("peak") or 0.0
     if not 70 <= cut <= 80:
@@ -2400,17 +2405,17 @@ def _only_what_can_graduate():
     problems = []
     # eight charts is enough to measure a trait, twelve to confirm one. A lean in between can never
     # graduate however much the player plays, so it is not told to them as a weakness.
-    thin = axis("charts with fast slides", -0.84, TRAIT_CONFIRM_CHARTS - 1)
-    thick = axis("charts with trills", -0.84, TRAIT_CONFIRM_CHARTS)
+    thin = axis("fast slides", -0.84, TRAIT_CONFIRM_CHARTS - 1)
+    thick = axis("trills", -0.84, TRAIT_CONFIRM_CHARTS)
     shown = [a["label"] for a in leaning([thin, thick])]
-    if "charts with fast slides" in shown:
+    if "fast slides" in shown:
         problems.append(f"a lean on {thin['count']} charts was shown, and it can never be confirmed")
-    if "charts with trills" not in shown:
+    if "trills" not in shown:
         problems.append("a lean on enough charts to be confirmed one day was not shown")
 
     # and a family averaging one trait is that trait wearing a family's name, drawn the same size as
     # a family averaging thirteen
-    lone = [{"dimension": "pattern", "label": "charts that spin you round the ring", "offset": 0.49,
+    lone = [{"dimension": "pattern", "label": "spinning round the ring", "offset": 0.49,
              "count": FAMILY_MIN_CHARTS * 2, "plays": 9, "verified": False, "leaning": False}]
     if family_axes(lone):
         problems.append("a family was drawn from a single trait")
@@ -2477,6 +2482,33 @@ def _manual_updates():
         problems.append("the site cannot reach the update route, so the buttons do nothing")
     if not _json.dumps(admin.update_state()).startswith("{"):
         problems.append("the developer page cannot be told how the last update went")
+    return problems
+
+
+@check("a measured trait is named after the technique, not after the kind of chart that carries it")
+def _trait_wording():
+    from rasmai.engine.simai.features import DEMANDS
+    from rasmai.scraping.mai_notes import PATTERN_ENGLISH, SHARE_BANDS
+
+    problems = []
+    # "charts with trills" is how the model groups them; "trills" is the thing the player does, and
+    # the tab is about the player
+    for _key, _dimension, label, _fixed in DEMANDS:
+        if label.startswith("charts "):
+            problems.append(f"{label!r} names a kind of chart rather than what it asks of the hands")
+    for _field, _kind, _high, label in SHARE_BANDS:
+        if label.endswith(" charts"):
+            problems.append(f"{label!r} names a kind of chart rather than what it asks of the hands")
+
+    # the editors' トリル is shown as "trills" and so is the measure taken off the notation, so a row
+    # has to say which it is or the two read as one thing said twice
+    measured = {label for _k, _d, label, _f in DEMANDS}
+    shared = measured & set(PATTERN_ENGLISH.values())
+    site = (ROOT / "web" / "components" / "dash" / "Traits.tsx").read_text(encoding="utf-8")
+    if shared and "t.read" not in site:
+        problems.append(f"{sorted(shared)} are worded the same as a community tag and nothing says which is which")
+    if shared and '"read"' not in (ROOT / "rasmai" / "web" / "dashboard" / "picks.py").read_text(encoding="utf-8"):
+        problems.append("the site is never told which traits were read from the notes")
     return problems
 
 

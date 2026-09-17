@@ -370,7 +370,7 @@ export type ChartDetail = {
 
 export type ChartPattern = { key: string; label: string; dimension: string; community: boolean; offset: number | null };
 
-export type Trait = { dimension: string; label: string; english?: string; offset: number; count: number; plays?: number; verified?: boolean; leaning?: boolean; p?: number };
+export type Trait = { dimension: string; label: string; english?: string; offset: number; count: number; plays?: number; verified?: boolean; leaning?: boolean; p?: number; read?: boolean };
 export type PracticeChart = { title: string; chart_type: string; difficulty: string; level: string; constant: number; cover: string; accuracy: number | null };
 export type TraitPractice = { label: string; english: string; tag: string; verified: boolean; offset: number; count: number; charts: PracticeChart[] };
 

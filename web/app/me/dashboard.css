@@ -67,6 +67,10 @@
 .gain { color: var(--gold-edge); font-weight: 700; }
 :root[data-theme="dark"] .gain { color: var(--gold); }
 .hint.ok { color: var(--ok); }
+.trait-odds { opacity: 0.72; }
+/* which side a trait came from: the notes themselves, or an editor's tag */
+.trait-read { margin-left: 8px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 999px;
+  font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: 0.6px; color: var(--muted); }
 .empty { color: var(--muted); padding: 22px 0; margin: 0; max-width: 560px; }
 .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .narrow-only { display: none; }

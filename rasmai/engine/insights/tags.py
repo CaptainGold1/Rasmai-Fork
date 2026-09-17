@@ -43,12 +43,12 @@ def chart_traits(chart: ChartRef, reading: bool = False) -> List[Tuple[str, str]
         if chart.bpm <= 130:
             traits.append(("tempo", "slow songs (under 130 BPM)"))
         elif chart.bpm >= 210:
-            traits.append(("tempo", "very fast songs (over 210 BPM)"))
+            traits.append(("tempo", "very fast (over 210 BPM)"))
     if chart.notes > 0:
         if chart.notes < 620:
             traits.append(("density", "light charts (under 620 notes)"))
         elif chart.notes >= 890:
-            traits.append(("density", "dense charts (890+ notes)"))
+            traits.append(("density", "a lot of notes (890+)"))
     if chart.version:
         era = "maimai-era songs (before DX)" if chart.version < 20 else "DX to FESTiVAL songs" if chart.version < 24 else "BUDDiES and newer songs"
         traits.append(("era", era))

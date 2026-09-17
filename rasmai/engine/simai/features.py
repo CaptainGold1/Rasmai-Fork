@@ -150,33 +150,33 @@ def features(chart: Chart) -> Dict[str, float]:
 # high on them was being called demanding for being easy. They are still stored, so naming one again
 # costs a line here rather than another crawl.
 DEMANDS: Tuple[Tuple[str, str, str, float], ...] = (
-    ("quickSlides", "slide", "charts with fast slides", 0.0),
-    ("multiTouch", "touch", "charts with multi-touch", 0.0),
-    ("busyHands", "pattern", "charts that keep both hands working", 0.0),
-    ("peak", "density", "charts with a hard burst", 0.0),
-    ("reach", "pattern", "charts that throw you across the screen", 0.0),
-    ("tempoChanges", "tempo", "charts that change tempo", 1.0),
-    ("streams", "pattern", "charts with long streams", 0.0),
-    ("trills", "pattern", "charts with trills", 0.0),
-    ("jacks", "pattern", "charts with jacks", 0.0),
-    ("touchSweeps", "touch", "charts with touch sweeps", 0.0),
-    ("circles", "pattern", "charts that spin you round the ring", 0.0),
-    ("delayedSlides", "slide", "charts with delayed slides", 0.0),
-    ("stationaryTrills", "pattern", "charts with trills on the spot", 0.0),
+    ("quickSlides", "slide", "fast slides", 0.0),
+    ("multiTouch", "touch", "multi-touch", 0.0),
+    ("busyHands", "pattern", "both hands at once", 0.0),
+    ("peak", "density", "bursts", 0.0),
+    ("reach", "pattern", "reaching across the screen", 0.0),
+    ("tempoChanges", "tempo", "tempo changes", 1.0),
+    ("streams", "pattern", "long streams", 0.0),
+    ("trills", "pattern", "trills", 0.0),
+    ("jacks", "pattern", "jacks", 0.0),
+    ("touchSweeps", "touch", "touch sweeps", 0.0),
+    ("circles", "pattern", "spinning round the ring", 0.0),
+    ("delayedSlides", "slide", "delayed slides", 0.0),
+    ("stationaryTrills", "pattern", "trills on the spot", 0.0),
     # a tenth of charts have one at all, so three quarters of the game scores zero and a quartile
     # would be zero with it. This bar is one full run in a chart of about a thousand notes, which is
     # the point at which the chart is asking for the thing rather than happening to contain it.
-    ("scatterTrills", "pattern", "charts with trills across the screen", 0.004),
-    ("axisTrills", "pattern", "charts with trills against a held button", 0.0),
-    ("wifiSlides", "slide", "charts with fan slides", 0.0),
-    ("gallops", "pattern", "charts with a bouncing rhythm", 0.0),
-    ("chainedSlides", "slide", "charts with chained slides", 0.0),
-    ("touchClusters", "touch", "charts with touch clusters", 0.0),
-    ("trillsOverSlides", "pattern", "charts with a trill over a slide", 0.0),
-    ("crossedLoops", "slide", "charts with overlapping loop slides", 0.0),
+    ("scatterTrills", "pattern", "trills across the screen", 0.004),
+    ("axisTrills", "pattern", "trills against a held button", 0.0),
+    ("wifiSlides", "slide", "fan slides", 0.0),
+    ("gallops", "pattern", "a bouncing rhythm", 0.0),
+    ("chainedSlides", "slide", "chained slides", 0.0),
+    ("touchClusters", "touch", "touch clusters", 0.0),
+    ("trillsOverSlides", "pattern", "a trill over a slide", 0.0),
+    ("crossedLoops", "slide", "overlapping loop slides", 0.0),
     # a fifth of hard charts have a mismatched pair at all, so the quartile of it is zero and the
     # trait could never be named. One pair in a chart of about a thousand notes is the bar.
-    ("mixedSpeedSlides", "slide", "charts with slides at different speeds", 0.001),
+    ("mixedSpeedSlides", "slide", "slides at different speeds", 0.001),
 )
 
 # a chart has to be in the top quarter of the game on a measure before that measure is named,

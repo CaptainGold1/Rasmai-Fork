@@ -22,9 +22,9 @@ FAMILIES: Dict[str, Dict[str, Any]] = {
         "members": (
             "スライド難", "一筆書き", "連結スライド", "交差", "魔法陣", "往復スライド", "早消し", "速度違い", "停止",
             "連続同始点(8分未満)", "連続同始点(8分以上)", "連続（交互）", "タップで発射", "ウミユリ配置",
-            "charts with fast slides", "slide-heavy charts",
-            "charts with delayed slides", "charts with fan slides", "charts with chained slides",
-            "charts with overlapping loop slides", "charts with slides at different speeds",
+            "fast slides", "slide-heavy",
+            "delayed slides", "fan slides", "chained slides",
+            "overlapping loop slides", "slides at different speeds",
         ),
     },
     "rotation": {
@@ -32,7 +32,7 @@ FAMILIES: Dict[str, Dict[str, Any]] = {
         "note": "spins, turnarounds and the sweeps that set them up",
         "members": (
             "速い回転", "遅い回転", "加減速回転", "イーチ回転", "折り返し", "速い流し", "遅い流し",
-            "charts that spin you round the ring",
+            "spinning round the ring",
         ),
     },
     "hands": {
@@ -40,8 +40,8 @@ FAMILIES: Dict[str, Dict[str, Any]] = {
         "note": "what each hand is doing while the other is busy",
         "members": (
             "混フレ", "持ち替え", "拘束タッチホールド", "拘束タッチホールD", "イーチ難", "巻き込み注意",
-            "charts that keep both hands working", "charts with a trill over a slide",
-            "charts that throw you across the screen", "hold-heavy charts", "break-heavy charts",
+            "both hands at once", "a trill over a slide",
+            "reaching across the screen", "hold-heavy", "break-heavy",
         ),
     },
     "speed": {
@@ -49,10 +49,10 @@ FAMILIES: Dict[str, Dict[str, Any]] = {
         "note": "how much arrives, how fast, and whether you can keep up",
         "members": (
             "乱打", "物量", "縦連", "微縦連", "トリル", "速いトリル", "軸押しトリル",
-            "charts with a hard burst", "dense charts (890+ notes)", "very fast songs (over 210 BPM)",
-            "charts with long streams", "charts with trills", "charts with jacks",
-            "charts with trills on the spot", "charts with trills across the screen",
-            "charts with trills against a held button", "charts with a bouncing rhythm",
+            "bursts", "a lot of notes (890+)", "very fast (over 210 BPM)",
+            "long streams", "trills", "jacks",
+            "trills on the spot", "trills across the screen",
+            "trills against a held button", "a bouncing rhythm",
         ),
     },
     "touch": {
@@ -60,8 +60,8 @@ FAMILIES: Dict[str, Dict[str, Any]] = {
         "note": "the pads, on their own and mixed into everything else",
         "members": (
             "タッチ複合", "タッチ乱打", "タッチ流し", "タッチ回転", "タッチ巻き込み",
-            "charts with multi-touch", "touch-heavy charts", "charts with touch sweeps",
-            "charts with touch clusters",
+            "multi-touch", "touch-heavy", "touch sweeps",
+            "touch clusters",
         ),
     },
     "reading": {
@@ -69,7 +69,7 @@ FAMILIES: Dict[str, Dict[str, Any]] = {
         "note": "knowing when to hit, when the chart will not tell you plainly",
         "members": (
             "リズム難", "ハネリズム", "ソフラン", "ホールド難",
-            "charts that change tempo", "slow songs (under 130 BPM)", "light charts (under 620 notes)",
+            "tempo changes", "slow songs (under 130 BPM)", "light charts (under 620 notes)",
         ),
     },
 }
