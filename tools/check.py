@@ -1104,6 +1104,21 @@ def _traits_are_skills():
         theirs = set(re.findall(r'"([a-z]+)"', found.group(1)))
         if theirs != NOT_A_SKILL:
             problems.append(f"the site refuses {sorted(theirs)} where the bot refuses {sorted(NOT_A_SKILL)}")
+    # the same goes for the numbers the rule is made of. The site kept showing a lean on nine charts
+    # after the bot had stopped, because the bar was raised in one copy of the rule and not the other
+    from rasmai.engine.insights.traits import TRAIT_CONFIRM_CHARTS, TRAIT_LEAN_OFFSET
+    for name, ours in (("CONFIRM_CHARTS", TRAIT_CONFIRM_CHARTS), ("LEAN", TRAIT_LEAN_OFFSET)):
+        found = re.search(rf"const {name} = ([0-9.]+);", source)
+        if not found:
+            problems.append(f"the site no longer keeps a {name} of its own, so the rule cannot be compared")
+        elif abs(float(found.group(1)) - float(ours)) > 1e-9:
+            problems.append(f"the site uses {name} of {found.group(1)} where the bot uses {ours}")
+    lean = [line for line in source.splitlines() if line.strip().startswith("const isLean =")]
+    if not lean:
+        problems.append("the site no longer says what it counts as leaning")
+    elif "CONFIRM_CHARTS" not in lean[0]:
+        problems.append("the site shows a lean however few charts are behind it, where the bot does not")
+
     # and the lists it builds have to be built from the filtered set, not the raw axes
     defines = [line for line in source.splitlines() if line.strip().startswith("const all =")]
     if not defines:

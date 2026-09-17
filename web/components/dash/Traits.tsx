@@ -14,13 +14,13 @@ const RADAR_MIN = 3;
 const RADAR_FILL = 6;
 
 type Axis = Trait & { filler?: boolean };
-const isLean = (a: Trait) => Boolean(a.leaning) && !a.verified;
+const isLean = (a: Trait) => Boolean(a.leaning) && !a.verified && a.count >= CONFIRM_CHARTS;
 const isEven = (a: Trait) => !a.verified && !a.leaning && a.count >= CONFIRM_CHARTS && Math.abs(a.offset) < LEAN;
 
 /** Pick the axes the wheel is drawn on: confirmed and leaning traits about play, both halves so the shape has contrast.
  *  A wheel with fewer than six is rounded out with the groups the player plays evenly, which sit on the middle ring. */
 export function radarAxes(axes: Trait[], limit = 8): Axis[] {
-  const pool: Axis[] = axes.filter((a) => (a.verified || a.leaning) && !NOT_A_SKILL.has(a.dimension));
+  const pool: Axis[] = axes.filter((a) => (a.verified || isLean(a)) && !NOT_A_SKILL.has(a.dimension));
   if (pool.length < RADAR_FILL) {
     const fillers = axes.filter((a) => isEven(a) && !NOT_A_SKILL.has(a.dimension)).sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset));
     pool.push(...fillers.slice(0, Math.max(0, RADAR_FILL - pool.length)).map((a) => ({ ...a, filler: true })));
@@ -267,7 +267,8 @@ export function Traits({ traits, axes, charts, families, practice, onOpen }: { t
   const shown = [...confirmed, ...leaning];
   const weak = shown.filter((t) => t.offset < 0).sort((a, b) => a.offset - b.offset).slice(0, 8);
   const strong = shown.filter((t) => t.offset > 0).sort((a, b) => b.offset - a.offset).slice(0, 8);
-  const largest = [...all].sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset)).slice(0, 4);
+  const largest = [...all].filter((t) => t.count >= CONFIRM_CHARTS)
+    .sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset)).slice(0, 4);
   const gate =
     "Confirmed: rarer than 1 in 50 under shuffled tags and the same sign in both halves of your charts, three splits over. Leaning: points one way but has not passed that, so read it as a hint. Only confirmed traits steer your picks and /new focus.";
 
