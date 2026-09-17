@@ -215,10 +215,13 @@ def trait_residuals(scored: Sequence[Any], chart_index: ChartIndex, profile: Pla
 TRAIT_THRESHOLD = 0.5      # a group has to sit this far from the player's own middle before it is worth naming
 
 
-TRAIT_LEAN_OFFSET = 0.3    # this far out, and rarer than one in ten under shuffled tags, is worth showing as a lean
+TRAIT_LEAN_OFFSET = 0.3    # this far out, and rarer than one in twenty under shuffled tags, is worth showing as a lean
 
 
-TRAIT_LEAN_P = 0.10
+# One in ten, over the two dozen or so groups a player has enough charts for, is about three leans
+# from chance alone - which was the whole list on a real page. One in twenty puts that under one and
+# a half, so a lean is a hint worth reading rather than a coin landing the same way twice.
+TRAIT_LEAN_P = 0.05
 
 
 RADAR_MIN = 3              # axes a wheel needs before it is drawn
