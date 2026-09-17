@@ -1139,6 +1139,15 @@ def _traits_are_skills():
     if "t.verified).length" not in source:
         problems.append("the two sides are levelled without keeping every confirmed trait, which can drop one")
 
+    # the curve spreads its dots inside their own constant so a stack of them reads as a stack; more
+    # than half a tenth and a dot would sit under a constant the chart does not have
+    curve = (ROOT / "web" / "components" / "dash" / "SkillCurve.tsx").read_text(encoding="utf-8")
+    spread = re.search(r"const SPREAD = ([0-9.]+)", curve)
+    if not spread:
+        problems.append("the curve no longer spreads its dots, so a constant's charts draw as one line")
+    elif float(spread.group(1)) >= 0.05:
+        problems.append(f"a dot may be nudged {spread.group(1)} from its constant, which is into the next one")
+
     # and the lists it builds have to be built from the filtered set, not the raw axes
     defines = [line for line in source.splitlines() if line.strip().startswith("const all =")]
     if not defines:
@@ -2551,6 +2560,42 @@ def _region_gate():
         problems.append("a chart only one source calls international was shown as international")
     if _regions(chart(intl=False, listed_intl=False, regions="jc")) != ["jp", "cn"]:
         problems.append("a Japan and China chart was not said to be one")
+    return problems
+
+
+@check("the curve never says a harder chart should go better, nor an easier one worse")
+def _curve_runs_one_way():
+    from rasmai.engine.analysis import ChartIndex, ChartRef, build_play_profile, calculate_rating
+    from rasmai.storage.models import SongInfo
+
+    # a player with a dense band of good scores and two lonely ones far outside it, which is what
+    # bends the fit: the kernel reaches for whatever bucket is nearest and can turn the curve round
+    index, played = ChartIndex(), []
+    rows = [(12.0, 99.5)] * 40 + [(12.5, 99.0)] * 20 + [(4.0, 80.0), (15.0, 84.0), (14.6, 70.0)]
+    for n, (constant, accuracy) in enumerate(rows):
+        title = f"chart {n}"
+        index.add(ChartRef(title=title, chart_type="dx", difficulty="master", constant=constant,
+                           level="13", notes=700, genre="", artist="", cover="", version=25, bpm=0.0))
+        played.append(SongInfo(name=title, chart_type="dx", difficulty_type="master", accuracy=accuracy,
+                               is_new=False, level="13", difficulty=constant,
+                               rating=calculate_rating(constant, accuracy)))
+    profile = build_play_profile(played, [], index, 26)
+
+    problems = []
+    points = profile.curve_points()
+    if not points:
+        problems.append("the curve came out empty for a player with sixty scores")
+    rises = [(a, b) for a, b in zip(points, points[1:]) if b["e"] > a["e"] + 1e-6]
+    if rises:
+        first = rises[0]
+        problems.append(f"the curve rises as charts get harder, at {first[0]['c']} -> {first[1]['c']} "
+                        f"({first[0]['e']} -> {first[1]['e']}), on {len(rises)} points")
+    # and the same rule the other way: a chart easier than where the evidence is may not be worse
+    if profile.expected_accuracy(6.0) < profile.expected_accuracy(12.0) - 1e-6:
+        problems.append("an easier chart was expected to go worse than a harder one")
+    # where the player actually plays, the fit is left alone
+    if abs(profile.expected_accuracy(12.0) - profile._raw_expectation(12.0)) > 0.05:
+        problems.append("the flattening moved the curve where the player's own scores are densest")
     return problems
 
 

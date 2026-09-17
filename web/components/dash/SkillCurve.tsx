@@ -19,6 +19,19 @@ const H = 300;
 const PAD = { left: 44, right: 14, top: 14, bottom: 30 };
 
 /** The fitted curve with the spread around it, and every score the player holds behind it. */
+// Constants land on a tenth, so every chart of the same difficulty shares one x and the dots stack
+// into a vertical stripe: 37 charts at 12.8 read as a line rather than as 37 scores. Each dot is
+// nudged sideways within its own tenth, by a number derived from the chart itself so it lands in the
+// same place on every render, which shows how many are really there without moving any of them into
+// a constant they do not have.
+const SPREAD = 0.035;
+
+function nudge(key: string): number {
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) % 100000;
+  return ((hash / 100000) * 2 - 1) * SPREAD;
+}
+
 export function SkillCurve({ curve, charts, comfort, reach, playedCeiling }: Props) {
   const scored = useMemo(
     () => (charts ?? []).filter((c) => c.constant > 0 && c.accuracy > 0 && c.difficulty !== "utage"),
@@ -100,7 +113,7 @@ export function SkillCurve({ curve, charts, comfort, reach, playedCeiling }: Pro
         {scored.map((chart) => (
           <circle
             key={`${chart.title}|${chart.type}|${chart.difficulty}`}
-            cx={x(chart.constant)}
+            cx={x(chart.constant + nudge(`${chart.title}|${chart.type}|${chart.difficulty}`))}
             cy={y(chart.accuracy)}
             r={2}
             className={`curve-dot d-${chart.difficulty}`}

@@ -67,6 +67,7 @@ class PlayProfile:
 
     # per half-level bucket: (typical good score, number of charts, best score)
     bucket_stats: Dict[float, Tuple[float, int, float]] = field(default_factory=dict)
+    _smoothed: Optional[List[Tuple[float, float]]] = field(default=None, repr=False, compare=False)
     dense_ceiling: float = 0.0        # hardest level with enough charts to trust the curve
 
     # corrections learned from the player's recorded plays against earlier predictions
@@ -123,6 +124,52 @@ class PlayProfile:
         start, end = self.bucket_stats[low][0], self.bucket_stats[high][0]
         return start + (end - start) * (constant - low) / (high - low)
 
+    def _raw_expectation(self, constant: float) -> float:
+        """The fit before the kinks are taken out of it; see `expected_accuracy`."""
+        line = self.curve_intercept + self.curve_slope * constant
+        local, weight = self._local_expectation(constant)
+        if local is not None:
+            blend = weight / (weight + 3.0)
+            line = blend * local + (1.0 - blend) * line
+        if self.dense_ceiling and constant > self.dense_ceiling:
+            line -= 0.8 * (constant - self.dense_ceiling)
+        ceiling = self._own_ceiling(constant)
+        if ceiling is not None:
+            line = min(line, ceiling + 0.3)
+        return min(ACHIEVEMENT_CAP, line)
+
+    def _smooth_curve(self) -> List[Tuple[float, float]]:
+        """The fit with the kinks taken out: a harder chart is never expected to go better.
+
+        The local correction is a kernel over the buckets the player has scores in, so where they
+        have played little the nearest bucket decides the shape and the curve can bend either way.
+        On one player it turned back up above 14.5, promising more at 15 than at 14.6, and at the
+        easy end it fell away to 67 at constant 4 because a single stray score anchored it there.
+
+        So the curve is flattened outward from the bucket with the most charts in it, which is where
+        the player's own evidence is strongest: harder than that it may not rise, easier it may not
+        fall. Where the fit is already sensible this changes nothing.
+
+        :rtype: List[Tuple[float, float]]
+        """
+        if self._smoothed is not None:
+            return self._smoothed
+        low = min((c for c, (_r, n, _b) in self.bucket_stats.items() if n), default=0.0)
+        high = max(self.chart_ceiling, self.played_ceiling or 0.0, low)
+        if high <= low:
+            self._smoothed = []
+            return self._smoothed
+        anchor = max(self.bucket_stats.items(), key=lambda row: row[1][1])[0] if self.bucket_stats else low
+        grid = [(tick / 10.0, self._raw_expectation(tick / 10.0))
+                for tick in range(int(round(low * 10)), int(round(high * 10)) + 1)]
+        at = min(range(len(grid)), key=lambda i: abs(grid[i][0] - anchor))
+        for i in range(at + 1, len(grid)):                      # harder: never above the point before it
+            grid[i] = (grid[i][0], min(grid[i][1], grid[i - 1][1]))
+        for i in range(at - 1, -1, -1):                         # easier: never below the point after it
+            grid[i] = (grid[i][0], max(grid[i][1], grid[i + 1][1]))
+        self._smoothed = grid
+        return grid
+
     def expected_accuracy(self, constant: float) -> float:
         """What the player scores at this level when a run goes well.
 
@@ -138,17 +185,20 @@ class PlayProfile:
         :returns: The achievement a good run should land.
         :rtype: float
         """
-        line = self.curve_intercept + self.curve_slope * constant
-        local, weight = self._local_expectation(constant)
-        if local is not None:
-            blend = weight / (weight + 3.0)
-            line = blend * local + (1.0 - blend) * line
-        if self.dense_ceiling and constant > self.dense_ceiling:
-            line -= 0.8 * (constant - self.dense_ceiling)
-        ceiling = self._own_ceiling(constant)
-        if ceiling is not None:
-            line = min(line, ceiling + 0.3)
-        return min(ACHIEVEMENT_CAP, line)
+        grid = self._smooth_curve()
+        if not grid:
+            return self._raw_expectation(constant)
+        if constant <= grid[0][0]:
+            return grid[0][1]
+        if constant >= grid[-1][0]:
+            return min(grid[-1][1], self._raw_expectation(constant))
+        step = int((constant - grid[0][0]) * 10)
+        low_c, low_e = grid[max(0, min(step, len(grid) - 1))]
+        high_c, high_e = grid[max(0, min(step + 1, len(grid) - 1))]
+        if high_c <= low_c:
+            return low_e
+        share = (constant - low_c) / (high_c - low_c)
+        return low_e + share * (high_e - low_e)
 
     def expected_for(self, constant: float, difficulty: str) -> float:
         """The curve at this constant, shifted by how the player does on this difficulty tier and by what their plays taught the model.
