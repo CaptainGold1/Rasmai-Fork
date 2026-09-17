@@ -82,7 +82,7 @@ export function Charts({ rows, onOpen }: { rows: ChartRow[]; onOpen?: OpenChart 
   return (
     <>
       <div className="filters">
-        <input className="search" type="search" placeholder="title, artist, level 13+ or constant 13.8" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input className="search" type="text" placeholder="title, artist, level 13+ or constant 13.8" value={query} onChange={(e) => setQuery(e.target.value)} />
         <select value={diff} onChange={(e) => setDiff(e.target.value)} aria-label="Difficulty">
           {DIFFS.map((d) => (
             <option key={d} value={d}>
