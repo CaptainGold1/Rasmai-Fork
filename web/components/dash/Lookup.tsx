@@ -108,7 +108,8 @@ export function Lookup({ target }: { target: LookupTarget | null }) {
       <div className="search-row">
         <input
           className="search"
-          type="search"
+          type="text"
+          role="searchbox"
           placeholder="title, artist or charter"
           value={query}
           onChange={(e) => search(e.target.value)}
