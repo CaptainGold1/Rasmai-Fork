@@ -145,6 +145,16 @@ def features(chart: Chart) -> Dict[str, float]:
 # (0.62x), so it was naming something that is not rotation. "circles" reads the notes instead, and
 # passes both gates.
 #
+# The last two came from the maimai chart browser's detector definitions, read against the same
+# 3,712 charts of ours the manifest describes. Both cleared the gates on their own tags:
+#
+#   repeatedHeads  +0.39  連続同始点(8分未満) 11.6x (23 charts)
+#   returnSlides   +0.31  往復スライド 8.5x (11 charts)
+#
+# Its third slide-head form, heads swapping between two buttons, rises with level harder than either
+# (+0.45) but 連続（交互） is on eight charts here. Eight is under the ten every other measure was
+# checked against, so it is not measured: a number that cannot be checked is not worth storing.
+#
 # "spins" (-0.27), "each" (-0.24) and "turnarounds" (-0.10) were named before the gates existed and
 # are measured and unnamed now: all three fall with level over the hard charts, so a chart scoring
 # high on them was being called demanding for being easy. They are still stored, so naming one again
@@ -177,6 +187,8 @@ DEMANDS: Tuple[Tuple[str, str, str, float], ...] = (
     # a fifth of hard charts have a mismatched pair at all, so the quartile of it is zero and the
     # trait could never be named. One pair in a chart of about a thousand notes is the bar.
     ("mixedSpeedSlides", "slide", "slides at different speeds", 0.001),
+    ("repeatedHeads", "slide", "slides fired from one spot", 0.0),
+    ("returnSlides", "slide", "a slide traced straight back", 0.0),
 )
 
 # a chart has to be in the top quarter of the game on a measure before that measure is named,
@@ -193,7 +205,7 @@ BOOKKEEPING = ("lv", "off")
 # bumped whenever a measure changes meaning, so stored readings taken by older code are dropped
 # rather than compared against levels they were never measured for. The charts themselves are kept,
 # so a bump costs a re-read of what is already held and not another crawl.
-VERSION = 5
+VERSION = 6
 
 
 def thresholds(rows: Iterable[Dict[str, float]]) -> Dict[str, float]:

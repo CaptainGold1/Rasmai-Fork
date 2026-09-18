@@ -56,7 +56,8 @@ export function PatternBrowser({ onOpen, open, setOpen, tag, setTag }: {
       <div className="filters">
         <input
           className="search"
-          type="search"
+          type="text"
+          role="searchbox"
           value={find}
           placeholder="Search traits: streams, 乱打, slide-heavy, dense…"
           aria-label="Search traits"

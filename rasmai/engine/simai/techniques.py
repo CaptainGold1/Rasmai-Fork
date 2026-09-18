@@ -39,6 +39,19 @@ SPEED_APART = 2.0
 # two before it
 TRAVEL_STEP = 2
 
+# slides fired one after another from the same button: the hand goes back to a spot instead of
+# following the chart round, which the maiノーツ editors tag as 連続同始点. Two slides this far
+# apart in time are two phrases rather than one.
+SLIDE_APART = 2.0
+HEAD_RUN = 3
+
+# a slide traced backwards is the same shape mirrored, or a line with its ends swapped - 往復スライド
+# to the editors. A ^ carries a direction round the ring that its letter does not say, so it is left
+# out rather than guessed at.
+STRAIGHT = ("-", "v", "V", "s", "z", "w")
+MIRROR = {"<": ">", ">": "<", "p": "q", "q": "p", "pp": "qq", "qq": "pp"}
+
+
 def _struck(notes: Sequence[Note]) -> List[Note]:
     """The notes a hand has to strike, in time order; a slide is followed, not struck."""
     return [n for n in notes if n.kind != "slide"]
@@ -209,6 +222,51 @@ def _mixed_speed(slides: Sequence[Note]) -> int:
     return mixed
 
 
+def _head_runs(slides: Sequence[Note]) -> List[List[Note]]:
+    """Slides close enough together in time to be one phrase rather than two."""
+    out: List[List[Note]] = []
+    run: List[Note] = []
+    for slide in slides:
+        if run and slide.time - run[-1].time > SLIDE_APART:
+            if len(run) > 1:
+                out.append(run)
+            run = []
+        run.append(slide)
+    if len(run) > 1:
+        out.append(run)
+    return out
+
+
+def _same_head(run: Sequence[Note]) -> int:
+    """Slides fired again and again from one button, counted by the slides in those stretches."""
+    out = i = 0
+    while i < len(run):
+        j = i + 1
+        while j < len(run) and run[j].position == run[i].position:
+            j += 1
+        if j - i >= HEAD_RUN:
+            out += j - i
+        i = j
+    return out
+
+
+def _mirrors(one: str, other: str) -> bool:
+    """Whether the second shape is the first one traced the other way."""
+    return (one == other and one in STRAIGHT) or MIRROR.get(one) == other
+
+
+def _retraced(slides: Sequence[Note]) -> int:
+    """A slide followed straight back the way it came, before the first has finished travelling."""
+    out = 0
+    for a, b in zip(slides, slides[1:]):
+        if a.position != b.end or a.end != b.position or not _mirrors(a.shape, b.shape):
+            continue
+        if b.time - a.time > SLIDE_APART or b.time > a.time + a.wait + a.duration:
+            continue
+        out += 2
+    return out
+
+
 def techniques(notes: Sequence[Note]) -> Dict[str, float]:
     """How much of a chart is each named technique, as a share of its notes.
 
@@ -253,6 +311,7 @@ def techniques(notes: Sequence[Note]) -> Dict[str, float]:
         if 1.6 <= one / two <= 3.4 and 1.6 <= three / two <= 3.4:
             gallop += 1
     chained = _chains(slides)
+    same = sum(_same_head(phrase) for phrase in _head_runs(slides))
     # touch pads walked in sequence, three or more in a row
     pads = [n for n in struck if n.kind in ("touch", "touch_hold")]
     sweep = sum(len(run) for run in _runs(pads) if len(run) >= 3)
@@ -285,4 +344,6 @@ def techniques(notes: Sequence[Note]) -> Dict[str, float]:
         "trillsOverSlides": _over_slides(runs, slides) / total,
         "crossedLoops": _crossed(slides) / total,
         "mixedSpeedSlides": _mixed_speed(slides) / total,
+        "repeatedHeads": same / total,
+        "returnSlides": _retraced(slides) / total,
     }
