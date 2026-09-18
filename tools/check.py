@@ -2321,6 +2321,18 @@ def _techniques():
     if of("(120){4}1-5[4:1],,,,E")["delayedSlides"] > 0:
         problems.append("a slide with nothing played over it was read as delayed")
 
+    # slides fired one after another from the same button, which is the hand going back to a spot
+    if of("(120){4}1-3[4:1],1-4[4:1],1-5[4:1],E")["repeatedHeads"] <= 0:
+        problems.append("three slides fired from one button were not read as repeated heads")
+    if of("(120){4}1-3[4:1],2-4[4:1],3-5[4:1],E")["repeatedHeads"] > 0:
+        problems.append("slides each starting somewhere new were read as repeated heads")
+
+    # a slide followed straight back the way it came, while the first is still travelling
+    if of("(120){4}1-5[4:1],5-1[4:1],E")["returnSlides"] <= 0:
+        problems.append("a slide traced back the way it came was not read as a return")
+    if of("(120){4}1>5[4:1],5>1[4:1],E")["returnSlides"] > 0:
+        problems.append("two slides carrying on the same way round were read as a return")
+
     # the fan slide is written as one letter and is counted as itself, not as a spin
     if of("(120){4}1w5[4:1],E")["wifiSlides"] <= 0:
         problems.append("the fan slide was not read as one")

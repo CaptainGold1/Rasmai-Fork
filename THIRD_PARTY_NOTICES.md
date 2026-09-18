@@ -8,6 +8,14 @@ Search aliases - the romanisations and translations people type instead of a Jap
 `src/maimai_intelligence/assets/song-aliases.json` in https://github.com/arussin/maimai-chart-browser
 (`rasmai/scraping/aliases.py`). The file is used for search only, which is what it says it is for.
 
+Two chart measures in `rasmai/engine/simai/techniques.py` - slides fired again and again from one button, and a
+slide traced straight back - follow the recognition rules its `src/maimai_analyzer/pattern_community.py` sets out
+for `repeated_slide_heads` and `return_slides`. The code is ours and reads our own parsed notes; what was taken is
+the definition of the shape. Its own chart results are not used: they are not published, and both measures were put
+through this project's gates against maiノーツ's tags before either was named.
+
+That project also credits the Tachi community song database for the aliases above.
+
 ```
 MIT License
 
