@@ -4,6 +4,7 @@ import json
 import logging
 import re
 
+from rasmai.bot.builders.charts.index import search_titles
 from rasmai.security import import_limiter, public_reason, refresh_limiter
 from rasmai.storage.db import delete_connected_account, get_connected_account
 from rasmai.bot.state.cache import forget_analysis
@@ -107,6 +108,11 @@ def handle_get(handler: Any, path: str, query: Dict[str, List[str]], user: Dict[
     if path == "/internal/me/search":
         handler._send_json(200, {"songs": search_payload(cached, (query.get("q") or [""])[0][:80])})
         return True
+    if path == "/internal/me/titles":
+        q = query.get("q")
+        if q is not None:
+            # Use the existing title search to find all matching titles
+            handler._send_json(200, {"titles": search_titles(q[0][:80], 100)})
     if path == "/internal/me/patterns":
         handler._send_json(200, patterns_payload(cached, (query.get("tag") or [""])[0][:60].strip(), (query.get("level") or [""])[0][:4].strip(),
                                                  (query.get("difficulty") or [""])[0][:10].strip().lower()))

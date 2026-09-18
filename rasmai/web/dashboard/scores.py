@@ -43,8 +43,9 @@ def charts_payload(cached: CachedAnalysis) -> List[Dict[str, Any]]:
             continue
         key = _chart_key(song)
         ref = a.chart_index.get(key)
+        print(ref)
         rows.append({
-            "title": song.name, "type": key[1], "difficulty": key[2], "level": song.level,
+            "title": ref.title if ref else (song.name), "type": key[1], "difficulty": key[2], "level": song.level,
             "constant": round(float(song.difficulty or 0), 1), "accuracy": round(float(song.accuracy or 0), 4),
             "rank": rank_for(float(song.accuracy or 0)), "rating": int(song.rating or 0),
             "fc": song.fc_status or "", "fs": song.fs_status or "", "dx": int(song.dx_score or 0),
