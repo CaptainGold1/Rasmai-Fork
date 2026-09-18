@@ -35,6 +35,12 @@ export function Charts({ rows, onOpen }: { rows: ChartRow[]; onOpen?: OpenChart 
   }
 
   function executeTitleSearch(query: string): void {
+    // console.log(`Searching for titles with query ${query}`);
+    query = query.trim();
+    if (query.length < 1) {
+      setTitles(null);
+      return;
+    }
     getTitlesJson(query)
       .then((result) => {
         if (result.titles.length < 1) {
@@ -51,6 +57,7 @@ export function Charts({ rows, onOpen }: { rows: ChartRow[]; onOpen?: OpenChart 
   }
 
   function searchTitles(query: string) {
+    query = query.trim();
     // console.log(`searching with query ${query}`);
     if (timerId.current) {
       window.clearTimeout(timerId.current);
@@ -63,7 +70,7 @@ export function Charts({ rows, onOpen }: { rows: ChartRow[]; onOpen?: OpenChart 
 
     timerId.current = window.setTimeout(() => {
       timerId.current = null;
-      executeTitleSearch(query.trim())
+      executeTitleSearch(query)
     }, 220);
   }
 
@@ -86,8 +93,10 @@ export function Charts({ rows, onOpen }: { rows: ChartRow[]; onOpen?: OpenChart 
       if (constant !== null) return Math.abs(r.constant - constant) < 0.05;
       if (level !== null) return r.level === level;
       // TODO: there's some small issue where it treats "13." as searching, could fix if you wanted to
-      if (titles && !titles.includes(r.title)) return false;
-      // if (q && !r.title.toLowerCase().includes(q) && !r.artist.toLowerCase().includes(q)) return false;
+      if (titles && !titles.includes(r.title)) {
+        // Perform the old substring check as well, if it fails both, it's excluded, if it passes either it gets included
+        if (q && !r.title.toLowerCase().includes(q) && !r.artist.toLowerCase().includes(q)) return false;
+      }
       return true;
     });
     const dir = desc ? -1 : 1;
@@ -99,6 +108,8 @@ export function Charts({ rows, onOpen }: { rows: ChartRow[]; onOpen?: OpenChart 
           const bLocation = titles.findIndex((item) => item === b.title);
 
           if (aLocation === bLocation) return b.rating - a.rating
+          else if (aLocation === -1) return 1 // If a doesn't exist in the titles array and b does, b comes first
+          else if (bLocation === -1) return -1 // If b doesn't exist in the titles array and a does, a comes first
           else return aLocation - bLocation;
         } else return b.rating - a.rating;
       }
@@ -149,15 +160,15 @@ export function Charts({ rows, onOpen }: { rows: ChartRow[]; onOpen?: OpenChart 
             // the top result can be a bad title match (if you have a better score on something that is a worse title match).
             // And just redirecting to the best title match doesn't work either, since the user would expect to be redirected
             // to the top search result.
-            if (e.key !== "Enter" || !query.trim()) return;
             const wanted = query.trim();
+            if (e.key !== "Enter" || wanted.length < 1) return;
             if (timerId.current) {
               // typed and entered inside the debounce: the hits on hand belong to an earlier query
               window.clearTimeout(timerId.current);
               timerId.current = null;
-              executeTitleSearch(wanted)
               return;
             }
+            executeTitleSearch(wanted);
           }}
         />
         <select value={diff} onChange={(e) => setDiff(e.target.value)} aria-label="Difficulty">
@@ -261,6 +272,7 @@ export function Charts({ rows, onOpen }: { rows: ChartRow[]; onOpen?: OpenChart 
       {filtered.length > shown && (
         <div className="more">
           <button type="button" className="button ghost" onClick={() => setShown(shown + 200)}>
+            {/* TODO: I think I need to fix this to actually query the remaining titles from the backend when pressed, as of now I believe it won't show past 100 titles */}
             show {Math.min(200, filtered.length - shown)} more
           </button>
         </div>
