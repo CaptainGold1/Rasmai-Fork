@@ -62,7 +62,8 @@ export function Picks({ initial, onOpen }: { initial: string; onOpen?: OpenChart
         </select>
         <input
           className="search scope-constant"
-          type="search"
+          type="text"
+          role="searchbox"
           value={constant}
           placeholder="or a constant: 13.2, or 13.0-13.4"
           aria-label="Only this constant or range"

@@ -1148,6 +1148,19 @@ def _traits_are_skills():
     elif float(spread.group(1)) >= 0.05:
         problems.append(f"a dot may be nudged {spread.group(1)} from its constant, which is into the next one")
 
+    # Windows' Japanese IME does not compose into an input typed as a search box, so a player typing
+    # 乱打 into the trait search got nothing. The boxes are plain text with the role that carries the
+    # same meaning, and a new one must not go back to the type that breaks.
+    boxes = []
+    for name in ("Charts", "Lookup", "PatternBrowser", "Picks"):
+        text = (ROOT / "web" / "components" / "dash" / f"{name}.tsx").read_text(encoding="utf-8")
+        if 'type="search"' in text:
+            boxes.append(name)
+        if 'className="search' in text and 'role="searchbox"' not in text:
+            problems.append(f"the search box in {name}.tsx no longer says it is one, so it is read as a plain field")
+    if boxes:
+        problems.append(f"{boxes} type a search box as \"search\", which a Japanese IME will not compose into")
+
     # and the lists it builds have to be built from the filtered set, not the raw axes
     defines = [line for line in source.splitlines() if line.strip().startswith("const all =")]
     if not defines:
