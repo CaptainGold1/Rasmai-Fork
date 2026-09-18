@@ -2612,6 +2612,51 @@ def _curve_runs_one_way():
     return problems
 
 
+@check("a song is found by the names people type for it, not only by its own title")
+def _search_aliases():
+    import pathlib
+    import tempfile
+
+    from rasmai.scraping import aliases
+    from rasmai.storage.db import connection as store
+
+    was, store.DATABASE_PATH = store.DATABASE_PATH, pathlib.Path(tempfile.mkdtemp()) / "t.sqlite3"
+    store._database_ready = False
+    problems = []
+    try:
+        # the file's own shape: [title, artist, [spellings]]
+        table = aliases.distil({"entries": [["+♂", "someone", ["+boy", "plus male"]],
+                                            ["ケロ⑨destiny", "Silver Forest", ["kero destiny"]],
+                                            ["no aliases", "x", []],
+                                            ["broken"]]})
+        if len(table) != 2:
+            problems.append(f"the alias file read as {len(table)} songs, expected the two that have any")
+        if table.get("+♂") != ["+boy", "plus male"]:
+            problems.append(f"a song's other names were not kept under its folded title: {table}")
+
+        # nothing is searched by until it has been stored, and a bad answer leaves what is held alone
+        if aliases.aliases_for("+♂"):
+            problems.append("aliases were served from an empty database")
+        from rasmai.storage.db import source_state_set
+        import json as _json
+        source_state_set(aliases.SOURCE, payload=_json.dumps(table))
+        aliases._memo = (0.0, None)
+        if aliases.aliases_for("+♂") != ["+boy", "plus male"]:
+            problems.append("a stored alias did not come back for its song")
+        if aliases.aliases_for("a song nobody wrote"):
+            problems.append("a song with no aliases was given some")
+
+        # the search table has to take them, or storing them changes nothing anyone can see
+        source = (ROOT / "rasmai" / "bot" / "builders" / "charts" / "index.py").read_text(encoding="utf-8")
+        if "party_aliases.aliases_for" not in source:
+            problems.append("the aliases are stored but nothing searches by them")
+    finally:
+        store.DATABASE_PATH = was
+        store._database_ready = False
+        aliases._memo = (0.0, None)
+    return problems
+
+
 def main() -> None:
     """Run every check and exit non-zero if any of them complained."""
     if FAILURES:
