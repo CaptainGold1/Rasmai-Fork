@@ -270,8 +270,13 @@ def _chart_db_upkeep() -> None:
     try:
         from rasmai.bot.builders.charts.index import refresh_shared_index, shared_index
         from rasmai.scraping.otoge import CachedOtogeDB
+        from rasmai.scraping import aliases as party_aliases
         from rasmai.scraping import dxdata
         fetched = CachedOtogeDB().update_if_needed()
+        try:
+            party_aliases.refresh()          # the names people type instead of a title; search only
+        except Exception:
+            logger.exception("alias table refresh failed")
         if dxdata.refresh() or fetched:
             refresh_shared_index()
         else:

@@ -2,6 +2,44 @@
 
 Rasmai is licensed under the GNU General Public License v3.0 (see LICENSE). It includes work from the projects below under their own licences, which are compatible with the GPL and reproduced here as they require.
 
+## maimai.party chart browser
+
+Search aliases - the romanisations and translations people type instead of a Japanese title - are read from
+`src/maimai_intelligence/assets/song-aliases.json` in https://github.com/arussin/maimai-chart-browser
+(`rasmai/scraping/aliases.py`). The file is used for search only, which is what it says it is for.
+
+Two chart measures in `rasmai/engine/simai/techniques.py` - slides fired again and again from one button, and a
+slide traced straight back - follow the recognition rules its `src/maimai_analyzer/pattern_community.py` sets out
+for `repeated_slide_heads` and `return_slides`. The code is ours and reads our own parsed notes; what was taken is
+the definition of the shape. Its own chart results are not used: they are not published, and both measures were put
+through this project's gates against maiノーツ's tags before either was named.
+
+That project also credits the Tachi community song database for the aliases above.
+
+```
+MIT License
+
+Copyright (c) 2026 arussin
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## dxrating
 
 Song aliases and per-version chart constants are read from `packages/dxdata/dxdata.json` in https://github.com/gekichumai/dxrating (`rasmai/scraping/dxdata.py`).

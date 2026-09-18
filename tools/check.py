@@ -1148,6 +1148,19 @@ def _traits_are_skills():
     elif float(spread.group(1)) >= 0.05:
         problems.append(f"a dot may be nudged {spread.group(1)} from its constant, which is into the next one")
 
+    # Windows' Japanese IME does not compose into an input typed as a search box, so a player typing
+    # 乱打 into the trait search got nothing. The boxes are plain text with the role that carries the
+    # same meaning, and a new one must not go back to the type that breaks.
+    boxes = []
+    for name in ("Charts", "Lookup", "PatternBrowser", "Picks"):
+        text = (ROOT / "web" / "components" / "dash" / f"{name}.tsx").read_text(encoding="utf-8")
+        if 'type="search"' in text:
+            boxes.append(name)
+        if 'className="search' in text and 'role="searchbox"' not in text:
+            problems.append(f"the search box in {name}.tsx no longer says it is one, so it is read as a plain field")
+    if boxes:
+        problems.append(f"{boxes} type a search box as \"search\", which a Japanese IME will not compose into")
+
     # and the lists it builds have to be built from the filtered set, not the raw axes
     defines = [line for line in source.splitlines() if line.strip().startswith("const all =")]
     if not defines:
@@ -2308,6 +2321,18 @@ def _techniques():
     if of("(120){4}1-5[4:1],,,,E")["delayedSlides"] > 0:
         problems.append("a slide with nothing played over it was read as delayed")
 
+    # slides fired one after another from the same button, which is the hand going back to a spot
+    if of("(120){4}1-3[4:1],1-4[4:1],1-5[4:1],E")["repeatedHeads"] <= 0:
+        problems.append("three slides fired from one button were not read as repeated heads")
+    if of("(120){4}1-3[4:1],2-4[4:1],3-5[4:1],E")["repeatedHeads"] > 0:
+        problems.append("slides each starting somewhere new were read as repeated heads")
+
+    # a slide followed straight back the way it came, while the first is still travelling
+    if of("(120){4}1-5[4:1],5-1[4:1],E")["returnSlides"] <= 0:
+        problems.append("a slide traced back the way it came was not read as a return")
+    if of("(120){4}1>5[4:1],5>1[4:1],E")["returnSlides"] > 0:
+        problems.append("two slides carrying on the same way round were read as a return")
+
     # the fan slide is written as one letter and is counted as itself, not as a spin
     if of("(120){4}1w5[4:1],E")["wifiSlides"] <= 0:
         problems.append("the fan slide was not read as one")
@@ -2596,6 +2621,51 @@ def _curve_runs_one_way():
     # where the player actually plays, the fit is left alone
     if abs(profile.expected_accuracy(12.0) - profile._raw_expectation(12.0)) > 0.05:
         problems.append("the flattening moved the curve where the player's own scores are densest")
+    return problems
+
+
+@check("a song is found by the names people type for it, not only by its own title")
+def _search_aliases():
+    import pathlib
+    import tempfile
+
+    from rasmai.scraping import aliases
+    from rasmai.storage.db import connection as store
+
+    was, store.DATABASE_PATH = store.DATABASE_PATH, pathlib.Path(tempfile.mkdtemp()) / "t.sqlite3"
+    store._database_ready = False
+    problems = []
+    try:
+        # the file's own shape: [title, artist, [spellings]]
+        table = aliases.distil({"entries": [["+♂", "someone", ["+boy", "plus male"]],
+                                            ["ケロ⑨destiny", "Silver Forest", ["kero destiny"]],
+                                            ["no aliases", "x", []],
+                                            ["broken"]]})
+        if len(table) != 2:
+            problems.append(f"the alias file read as {len(table)} songs, expected the two that have any")
+        if table.get("+♂") != ["+boy", "plus male"]:
+            problems.append(f"a song's other names were not kept under its folded title: {table}")
+
+        # nothing is searched by until it has been stored, and a bad answer leaves what is held alone
+        if aliases.aliases_for("+♂"):
+            problems.append("aliases were served from an empty database")
+        from rasmai.storage.db import source_state_set
+        import json as _json
+        source_state_set(aliases.SOURCE, payload=_json.dumps(table))
+        aliases._memo = (0.0, None)
+        if aliases.aliases_for("+♂") != ["+boy", "plus male"]:
+            problems.append("a stored alias did not come back for its song")
+        if aliases.aliases_for("a song nobody wrote"):
+            problems.append("a song with no aliases was given some")
+
+        # the search table has to take them, or storing them changes nothing anyone can see
+        source = (ROOT / "rasmai" / "bot" / "builders" / "charts" / "index.py").read_text(encoding="utf-8")
+        if "party_aliases.aliases_for" not in source:
+            problems.append("the aliases are stored but nothing searches by them")
+    finally:
+        store.DATABASE_PATH = was
+        store._database_ready = False
+        aliases._memo = (0.0, None)
     return problems
 
 

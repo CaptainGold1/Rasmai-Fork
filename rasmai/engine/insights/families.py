@@ -25,6 +25,7 @@ FAMILIES: Dict[str, Dict[str, Any]] = {
             "fast slides", "slide-heavy",
             "delayed slides", "fan slides", "chained slides",
             "overlapping loop slides", "slides at different speeds",
+            "slides fired from one spot", "a slide traced straight back",
         ),
     },
     "rotation": {
